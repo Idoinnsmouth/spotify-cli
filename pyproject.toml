@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spotify-cli"
+version = "0.1.0"
+description = "Terminal Spotify control (search + play)"
+#readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "spotipy>=2.24",
+  "click>=8.1",
+  "python-dotenv>=1.0"
+]
+
+[project.scripts]
+spotify = "spotify_cli.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}          # ← tell setuptools that packages live in src/
+
+# OPTION A: explicitly list packages
+packages = ["spotify_cli"]
+
+# OPTION B (alternative): auto-discover from src/
+# [tool.setuptools.packages.find]
+# where = ["src"]
+# include = ["spotify_cli*"]
