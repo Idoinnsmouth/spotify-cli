@@ -11,6 +11,8 @@ requires-python = ">=3.12"
 dependencies = [
   "spotipy>=2.24",
   "click>=8.1",
+  "textual==6.1.0",
+  "textual-dev==1.7.0",
   "python-dotenv>=1.0"
 ]
 
@@ -18,12 +20,5 @@ dependencies = [
 spotify = "spotify_cli.cli:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}          # ← tell setuptools that packages live in src/
-
-# OPTION A: explicitly list packages
+package-dir = {"" = "src"}
 packages = ["spotify_cli"]
-
-# OPTION B (alternative): auto-discover from src/
-# [tool.setuptools.packages.find]
-# where = ["src"]
-# include = ["spotify_cli*"]
