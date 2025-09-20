@@ -1,9 +1,9 @@
-from spotipy import SpotifyOAuth
+from spotipy import SpotifyOAuth, Spotify
 
 from spotify_cli.config import Config
 
 
-def get_spotify_client(cfg: Config):
+def get_spotify_client(cfg: Config) -> Spotify:
     auth = SpotifyOAuth(
         client_id=cfg.client_id,
         client_secret=cfg.client_secret,

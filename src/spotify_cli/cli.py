@@ -3,6 +3,7 @@ import sys
 import click
 from spotipy import Spotify
 
+from spotify_cli.app import SpotifyApp
 from spotify_cli.auth import get_spotify_client
 from spotify_cli.config import Config
 from spotify_cli.playback import play_artist
@@ -37,7 +38,7 @@ def main():
     """Spotify terminal controller."""
     pass
 
-# todo - switch to typer
+# todo - switch to textual and build a tui (:
 @main.command("play")
 @click.argument("query", nargs=-1, required=True)
 @click.option("--type", "qtype", type=click.Choice(["artist", "track", "album"]), default="artist")
@@ -69,4 +70,5 @@ def play_cmd(query, qtype):
 #     resume(sp)
 
 if __name__ == "__main__":
-    main()
+    app = SpotifyApp()
+    app.run()
