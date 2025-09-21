@@ -53,5 +53,6 @@ class TracksSearchItems(BaseModel):
     track_number: int
     type: str
     uri: str
+    name: str
 
 

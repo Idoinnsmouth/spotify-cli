@@ -8,7 +8,7 @@ from textual.screen import Screen
 from textual.suggester import Suggester
 from textual.widgets import Input, Label, RadioSet, RadioButton, Footer
 
-from spotify_cli.spotify_service import play_artist, play_track, play_album
+from spotify_cli.spotify_service import play_artist, play_track, play_album, search_spotify, SearchElementTypes
 
 
 class SearchScreen(Screen):
@@ -89,9 +89,9 @@ class SearchScreen(Screen):
         self.input.placeholder = placeholders[self.mode]
 
         self.input.suggester = {
-            "artist": ArtistSuggester(self.sp, delay=0.3),
-            "track": ArtistSuggester(self.sp, delay=0.3), # todo - create suggster
-            "album": ArtistSuggester(self.sp, delay=0.3),   # todo - create suggster
+            "artist": SearchSuggester(self.sp, delay=0.3, search_element_type=SearchElementTypes.ARTIST),
+            "track": SearchSuggester(self.sp, delay=0.3, search_element_type=SearchElementTypes.TRACK),
+            "album": SearchSuggester(self.sp, delay=0.3, search_element_type=SearchElementTypes.ALBUM),
         }[self.mode]
 
         picker = self.query_one("#mode_picker", RadioSet)
@@ -111,18 +111,21 @@ class SearchScreen(Screen):
         self.dismiss()
     #endregion
 
-class ArtistSuggester(Suggester):
+class SearchSuggester(Suggester):
     sp: Spotify
+    search_element_type: SearchElementTypes
     delay: float
     _call_id: int
 
-    def __init__(self, sp: Spotify, delay: float = 0.30, use_cache: bool = False):
+    def __init__(self, sp: Spotify, search_element_type: SearchElementTypes, delay: float = 0.30,
+                 use_cache: bool = False):
         super().__init__(use_cache=use_cache)
         self.sp = sp
         self.delay = delay
         self._call_id = 0
+        self.search_element_type=search_element_type
 
-    async def get_suggestion(self, value: str):
+    async def get_suggestion(self, value: str) -> str | None:
         # don't want to start suggesting based on only one char
         if len(value.strip()) < 2:
             return None
@@ -135,6 +138,13 @@ class ArtistSuggester(Suggester):
         if my_id != self._call_id:
             return None
 
-        res = self.sp.search(q=f"artist:{value}", type="artist", limit=1)
-        artist = res.get("artists", {}).get("items", [])
-        return artist[0].get("name") if artist else None
+        return await self.search_in_spotify(value=value)
+
+    async def search_in_spotify(self, value: str) -> str:
+        res = search_spotify(
+            sp=self.sp,
+            query=value,
+            search_element=self.search_element_type,
+            limit=1
+        )
+        return res.items[0].name if len(res.items) > 0 else None
