@@ -13,7 +13,8 @@ dependencies = [
   "click>=8.1",
   "textual==6.1.0",
   "textual-dev==1.7.0",
-  "python-dotenv>=1.0"
+  "python-dotenv>=1.0",
+  "pydantic==2.11.9",
 ]
 
 [project.scripts]
