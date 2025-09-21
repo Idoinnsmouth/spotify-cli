@@ -3,10 +3,10 @@ import sys
 import click
 from spotipy import Spotify
 
-from spotify_cli.app import SpotifyApp
+from spotify_cli.app.app import SpotifyApp
 from spotify_cli.auth import get_spotify_client
 from spotify_cli.config import Config
-from spotify_cli.playback import play_artist
+from spotify_cli.spotify_service import play_artist
 
 def get_client() -> Spotify:
     cfg = Config()
