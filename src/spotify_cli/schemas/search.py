@@ -8,7 +8,7 @@ from spotify_cli.schemas.images import SpotifyImage
 class SearchResult(BaseModel):
     href: str
     limit: int
-    next: str
+    next: str | None = None
     offset: int
     previous: str | None
     total: int
