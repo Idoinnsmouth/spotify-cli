@@ -1,0 +1,8 @@
+#track_details{
+    margin: 1 0 0 2;
+    #track_text_details {
+        Static {
+            margin: 1 0 0 0;
+        }
+    }
+}

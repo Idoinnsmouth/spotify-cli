@@ -8,6 +8,7 @@ from spotipy import Spotify
 from spotify_cli.auth import get_spotify_client
 from spotify_cli.config import Config
 from spotify_cli.schemas.search import SearchResult, AlbumSearchItem, TracksSearchItems
+from spotify_cli.schemas.track import Track
 
 
 class SearchElementTypes(Enum):
@@ -156,10 +157,25 @@ def play_or_pause_track(sp: Spotify):
     device_id = sp.devices().get("devices")[0].get("id")
     currently_playing = sp.currently_playing()
 
-    if not currently_playing.get("is_playing"):
+    if currently_playing is None or not currently_playing.get("is_playing"):
         sp.start_playback(device_id=device_id)
     else:
         sp.pause_playback(device_id=device_id)
+
+
+def get_current_playing_track(sp: Spotify) -> Track | None:
+    track_data = sp.current_playback()
+
+    if track_data is None:
+        return None
+
+    return Track(
+        name=track_data.get("item").get("name"),
+        artist=track_data.get("item").get("artists")[0].get("name"),
+        album=track_data.get("item").get("album").get("name"),
+        is_playing=track_data.get("is_playing"),
+    )
+
 #endregion
 
 if __name__ == "__main__":
@@ -167,7 +183,7 @@ if __name__ == "__main__":
     _sp = get_spotify_client(_cfg)
     play_album(
         _sp,
-        "the trail"
+        "red"
     )
 
     print("hello")

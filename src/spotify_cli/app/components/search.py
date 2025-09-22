@@ -1,4 +1,5 @@
 import asyncio
+from time import sleep
 
 from spotipy import Spotify
 from textual import on
@@ -8,7 +9,8 @@ from textual.screen import Screen
 from textual.suggester import Suggester
 from textual.widgets import Input, Label, RadioSet, RadioButton, Footer
 
-from spotify_cli.spotify_service import play_artist, play_track, play_album, search_spotify, SearchElementTypes
+from spotify_cli.spotify_service import play_artist, play_track, play_album, search_spotify, SearchElementTypes, \
+    get_current_playing_track
 
 
 class SearchScreen(Screen):
@@ -21,13 +23,15 @@ class SearchScreen(Screen):
 
     sp: Spotify
     print_error_text_to_gutter: callable
+    update_track: callable
     mode = reactive("artist")
 
-    def __init__(self, sp: Spotify, print_error_text_to_gutter: callable):
+    def __init__(self, sp: Spotify, print_error_text_to_gutter: callable, update_track: callable):
         super().__init__()
         self.input: Input | None = None
         self.sp = sp
         self.print_error_text_to_gutter = print_error_text_to_gutter
+        self.update_track = update_track
 
     def compose(self):
         yield Label("Search")
@@ -72,6 +76,14 @@ class SearchScreen(Screen):
                     sp=self.sp,
                     album_query=event.value
                 )
+
+            # todo - i'm using sleep currently because without it the track will not update before getting the
+            #  api results. need a better way to do this because this suckssss
+            sleep(5)
+            # todo - find a way to type hint this
+            track = get_current_playing_track(sp=self.sp)
+            self.update_track(track=track)
+
         except Exception as e:
             self.print_error_text_to_gutter([str(e)])
 
