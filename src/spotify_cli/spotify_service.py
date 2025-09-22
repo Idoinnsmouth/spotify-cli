@@ -169,10 +169,13 @@ def get_current_playing_track(sp: Spotify) -> Track | None:
     if track_data is None:
         return None
 
+    # todo - move results to schema?
     return Track(
         name=track_data.get("item").get("name"),
         artist=track_data.get("item").get("artists")[0].get("name"),
-        album=track_data.get("item").get("album").get("name"),
+        album=AlbumSearchItem(
+            **track_data.get("item").get("album")
+        ),
         is_playing=track_data.get("is_playing"),
     )
 
@@ -181,9 +184,8 @@ def get_current_playing_track(sp: Spotify) -> Track | None:
 if __name__ == "__main__":
     _cfg = Config()
     _sp = get_spotify_client(_cfg)
-    play_album(
+    track = get_current_playing_track(
         _sp,
-        "red"
     )
 
     print("hello")
