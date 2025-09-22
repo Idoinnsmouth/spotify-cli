@@ -18,6 +18,7 @@ from spotify_cli.spotify_service import play_or_pause_track, play_artist
 
 
 class SpotifyApp(App):
+    CSS_PATH = "app.tcss"
     ENABLE_COMMAND_PALETTE = False
     BINDINGS = [
         ("p", "pause_start_playback", "Pause/Resume"),

@@ -1,6 +1,7 @@
+from textual.containers import Container
 from textual.reactive import reactive
 from textual.widget import Widget
-from textual.widgets import Placeholder, Static
+from textual.widgets import Static
 
 from spotify_cli.schemas.track import Track
 
@@ -17,6 +18,9 @@ class TrackDetail(Widget):
             yield Static("No track selected")
             return
 
-        yield Static(self.track.name or "")
-        yield Static(getattr(self.track, "album", "") or "")
-        yield Static(getattr(self.track, "artist", "") or "")
+        yield Container(
+        Static(f"Track: {self.track.name}"),
+            Static(f"Album: {self.track.album}"),
+            Static(f"Artist: {self.track.artist}"),
+            id="track_text_details"
+        )
