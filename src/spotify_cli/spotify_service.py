@@ -1,5 +1,4 @@
 import subprocess
-import sys
 import time
 from enum import Enum
 
@@ -7,6 +6,7 @@ from spotipy import Spotify
 
 from spotify_cli.auth import get_spotify_client
 from spotify_cli.config import Config
+from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.search import SearchResult, AlbumSearchItem, TracksSearchItems
 from spotify_cli.schemas.track import Track
 
@@ -18,13 +18,20 @@ class SearchElementTypes(Enum):
 
 
 class NoArtistFound(Exception):
-    pass
+    def __str__(self):
+        return "No artist found"
 
 class NoAlbumsFound(Exception):
-    pass
+    def __str__(self):
+        return "No albums found"
 
 class NoTrackFound(Exception):
-    pass
+    def __str__(self):
+        return "No track found"
+
+class NoActiveDeviceFound(Exception):
+    def __str__(self):
+        return "No active device found"
 
 #region #### Check Spotify client ####
 
@@ -37,19 +44,20 @@ def ensure_spotify_running():
         time.sleep(1.5)
 
 
-def active_device(sp):
-    devs = sp.devices().get("devices", [])
-    for d in devs:
-        if d.get("is_active"):
-            return d
-    return devs[0] if devs else None
+def get_devices(sp: Spotify) -> list[Device]:
+    resp = sp.devices()
+    return [Device(**device) for device in resp.get("devices", [])]
 
+def get_first_active_device(sp) -> Device:
+    devices = get_devices(sp=sp)
+    return next((_device for _device in devices if _device.is_active), devices[0])
 
-def wait_for_device(sp, tries=12, delay=0.5):
+# todo - turn this to async func
+def wait_for_device(sp, tries=12, delay=0.5) -> Device | None:
     for _ in range(tries):
-        d = active_device(sp)
-        if d:
-            return d
+        active_device = get_first_active_device(sp)
+        if active_device:
+            return active_device
         time.sleep(delay)
     return None
 #endregion
@@ -90,7 +98,7 @@ def play_artist(sp: Spotify, artist_query, market="from_token"):
     albums = get_artist_albums(sp=sp, artist_id=artist.id, country=market)
 
     if len(albums) == 0:
-        raise NoAlbumsFound
+        raise NoAlbumsFound()
 
 
     all_albums_tracks = []
@@ -101,14 +109,11 @@ def play_artist(sp: Spotify, artist_query, market="from_token"):
     uris = [track.uri for track in all_albums_tracks]
 
     ensure_spotify_running()
-    dev = wait_for_device(sp)
-    if not dev:
-        pass
-        # todo - handle send back message
-        # print("No active device. Open Spotify and try again.")
-        # sys.exit(1)
+    device = wait_for_device(sp)
+    if device is None:
+        raise NoActiveDeviceFound()
 
-    sp.start_playback(uris=uris, device_id=sp.devices().get("devices")[0].get("id"))
+    sp.start_playback(uris=uris, device_id=device.id)
 
 
 def play_track(sp: Spotify, song_query):
@@ -125,14 +130,11 @@ def play_track(sp: Spotify, song_query):
     uris = [track.uri for track in search_res.items]
 
     ensure_spotify_running()
-    dev = wait_for_device(sp)
-    if not dev:
-        pass
-        # todo - handle send back message
-        # print("No active device. Open Spotify and try again.")
-        # sys.exit(1)
+    device = wait_for_device(sp)
+    if device is None:
+        raise NoActiveDeviceFound()
 
-    sp.start_playback(uris=uris, device_id=sp.devices().get("devices")[0].get("id"))
+    sp.start_playback(uris=uris, device_id=device.id)
 
 
 def play_album(sp: Spotify, album_query):
@@ -143,24 +145,25 @@ def play_album(sp: Spotify, album_query):
         raise NoAlbumsFound()
 
     ensure_spotify_running()
-    dev = wait_for_device(sp)
-    if not dev:
-        pass
-        # todo - handle send back message
-        # print("No active device. Open Spotify and try again.")
-        # sys.exit(1)
+    device = wait_for_device(sp)
+    if device is None:
+        raise NoActiveDeviceFound()
 
-    sp.start_playback(context_uri=albums[0].uri, device_id=sp.devices().get("devices")[0].get("id"))
+    sp.start_playback(context_uri=albums[0].uri, device_id=device.id)
 
 
 def play_or_pause_track(sp: Spotify):
-    device_id = sp.devices().get("devices")[0].get("id")
+    device = get_first_active_device(sp=sp)
+
+    if device is None:
+        raise NoActiveDeviceFound()
+
     currently_playing = sp.currently_playing()
 
     if currently_playing is None or not currently_playing.get("is_playing"):
-        sp.start_playback(device_id=device_id)
+        sp.start_playback(device_id=device.id)
     else:
-        sp.pause_playback(device_id=device_id)
+        sp.pause_playback(device_id=device.id)
 
 
 def get_current_playing_track(sp: Spotify) -> Track | None:
@@ -181,9 +184,6 @@ def get_current_playing_track(sp: Spotify) -> Track | None:
 if __name__ == "__main__":
     _cfg = Config()
     _sp = get_spotify_client(_cfg)
-    play_album(
-        _sp,
-        "red"
-    )
+    device = get_first_active_device(sp=_sp)
 
     print("hello")
