@@ -41,6 +41,10 @@ class AlbumSearchItem(BaseModel):
     artists: list[ArtistSearchItem]
 
 
+    def get_album_image(self) -> SpotifyImage:
+        return self.images[0]
+
+
 class TracksSearchItems(BaseModel):
     album: Optional[AlbumSearchItem] = None
     artists: list[ArtistSearchItem]
