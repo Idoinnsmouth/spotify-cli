@@ -15,9 +15,11 @@
             }
             
             Static {
-                width: auto;
+                width: 100%;
                 height: 100%;
-                border: solid white;
+                content-align: center middle;
+                padding: 0;
+                overflow: hidden;
             }
         }
     }

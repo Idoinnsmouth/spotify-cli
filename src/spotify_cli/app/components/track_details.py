@@ -7,7 +7,7 @@ from textual.widget import Widget, AwaitMount
 from textual.widgets import Static
 
 from spotify_cli.schemas.track import Track
-from spotify_cli.utils.ascii_image_converter import get_ascii_of_image
+from spotify_cli.utils.pixelate_images import get_image_from_url
 
 
 class TrackDetail(Widget):
@@ -17,37 +17,23 @@ class TrackDetail(Widget):
     def __init__(self, *children: Widget, track: Track | None = None):
         super().__init__(*children)
         self.track = track
+        self.pixel_view = Static()
+
 
     def compose(self):
-        # if not self.track:
-        #     yield Static("No track selected")
-        #     return
-        #
-        # yield Horizontal(
-        #     Container(
-        #         Static(f"Track: {self.track.name}"),
-        #             Static(f"Album: {self.track.album.name}"),
-        #             Static(f"Artist: {self.track.artist}"),
-        #         id="track_text_details"
-        #     ),
-        #     Container(
-        #         Static(Text(self.album_image, no_wrap=True)),
-        #         id="album_cover"
-        #     ),
-        #     id="track_layout"
-        # )
+        if not self.track:
+            yield Static("No track selected")
+            return
 
         yield Horizontal(
             Container(
-                Static(f"Track: Devil Trigger"),
-                    Static(f"Album: DMC"),
-                    Static(f"Artist: DMC"),
+                Static(f"Track: {self.track.name}"),
+                    Static(f"Album: {self.track.album.name}"),
+                    Static(f"Artist: {self.track.artist}"),
                 id="track_text_details"
             ),
             Container(
-                Container(
-                    Static(Text((self.album_image or "a"), no_wrap=True)),
-                ),
+                self.pixel_view,
                 id="album_cover"
             ),
             id="track_layout"
@@ -59,8 +45,8 @@ class TrackDetail(Widget):
 
 
     def watch_track(self, old: "Track | None", new: "Track | None"):
-        # if new is None or (old and old.name == new.name):
-        #     return
+        if new is None or (old and old.name == new.name):
+            return
         self._start_service_call(new)
 
 
@@ -72,17 +58,21 @@ class TrackDetail(Widget):
             exclusive=True,
             group="track-service",
             thread=False,
-            # name=f"track-service:{track.id if hasattr(track, 'id') else track.name}",
+            name=f"track-service:{track.name}",
         )
 
     async def _fetch_track_album_image(self, track: "Track"):
-        # album_image = track.album.get_album_image()
-        # self.album_image = get_ascii_of_image(album_image.url, floor(((80 / self.container_viewport.width) * 100)))
-        w, vh = self.app.size
-        self.album_image = get_ascii_of_image(
-            "https://i.scdn.co/image/ab67616d0000b2736ab9aff73fa181d27dd8b9e0",
-            height=64,
-            width_ratio=0.1
+        if self.pixel_view is None:
+            return
+
+        album_image = track.album.get_album_image()
+
+        # todo - maybe do the size dynmicly to the terminal size
+        img = get_image_from_url(
+            album_image.url,
+            (50,50)
         )
+        self.pixel_view.update(img)
+
 
 
