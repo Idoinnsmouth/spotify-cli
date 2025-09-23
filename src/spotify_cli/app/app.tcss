@@ -1,26 +1,38 @@
-#track_details{
-    margin: 1 5 1 1;
+#main {
+    layout: grid;
+    grid-size: 1 2;
+    grid-rows: 11fr 1fr;
 
-    #track_layout {  
-        #track_text_details {
-            width: 9fr;
-        }
+    #track_details{
+        padding: 1 5 1 1;
+        box-sizing: border-box;
 
-        #album_cover {
-            width: 12fr;
-            
-            Container {
-                # width: 100%;
-                border: solid yellow;
+        #track_layout {  
+            #track_text_details {
+                width: 9fr;
             }
-            
-            Static {
-                width: 100%;
-                height: 100%;
-                content-align: center middle;
-                padding: 0;
-                overflow: hidden;
+
+            #album_cover {
+                width: 12fr;
+                
+                Container {
+                    # width: 100%;
+                    border: solid yellow;
+                }
+                
+                Static {
+                    width: 100%;
+                    height: 100%;
+                    content-align: center middle;
+                    padding: 0;
+                    overflow: hidden;
+                }
             }
         }
     }
+
+    #devices {
+        padding: 1 0 0 0 ;
+    }
 }
+
