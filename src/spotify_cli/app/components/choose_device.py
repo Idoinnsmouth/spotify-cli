@@ -4,7 +4,7 @@ from spotipy import Spotify
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import RadioSet, RadioButton, Footer
+from textual.widgets import RadioSet, RadioButton, Footer, Static
 
 from spotify_cli.schemas.device import Device
 from spotify_cli.spotify_service import get_devices
@@ -35,6 +35,9 @@ class ChooseDevice(Screen):
                         value=(self.active_device.id == device.id if self.active_device else device.is_active),
 
                     )
+        else:
+            yield Static("No available devices")
+
         yield Footer()
 
     def action_pop_screen(self):

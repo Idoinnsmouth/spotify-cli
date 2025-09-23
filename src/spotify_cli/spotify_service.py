@@ -8,7 +8,7 @@ from spotify_cli.auth import get_spotify_client
 from spotify_cli.config import Config
 from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.search import SearchResult, AlbumSearchItem, TracksSearchItems
-from spotify_cli.schemas.track import Track
+from spotify_cli.schemas.track import Track, Actions
 
 
 class SearchElementTypes(Enum):
@@ -53,9 +53,13 @@ def get_devices(sp: Spotify) -> list[Device]:
     return [Device(**device) for device in resp.get("devices", [])]
 
 
-def get_first_active_device(sp) -> Device:
+def get_first_active_device(sp) -> Device | None:
     devices = get_devices(sp=sp)
-    return next((_device for _device in devices if _device.is_active), devices[0])
+
+    if len(devices) > 0:
+        return next((_device for _device in devices if _device.is_active), devices[0])
+    else:
+        return None
 
 
 # todo - turn this to async func
@@ -167,36 +171,36 @@ def play_or_pause_track(sp: Spotify, active_device: Device | None = None):
         if active_device is None:
             raise NoActiveDeviceFound()
 
-    currently_playing = sp.current_playback()
+    currently_playing = get_current_playing_track(sp=sp)
 
     if _can_start_playback(currently_playing, active_device):
-        if currently_playing.get("device", {}).get("id") != active_device.id:
+        if currently_playing.device.id != active_device.id:
             sp.transfer_playback(active_device.id)
         else:
             sp.start_playback(device_id=active_device.id)
     elif _can_pause_playback(currently_playing, active_device):
-        if currently_playing.get("device", {}).get("id") != active_device.id:
+        if currently_playing.device.id != active_device.id:
             sp.transfer_playback(active_device.id)
         else:
             sp.pause_playback(device_id=active_device.id)
 
 
 # todo - maybe load currently playing into a schema and make this a function
-def _can_start_playback(currently_playing: dict | None, active_device: Device | None) -> bool:
+def _can_start_playback(currently_playing: Track | None, active_device: Device | None) -> bool:
     if currently_playing is None:
         return False
-    if currently_playing.get("is_playing") is True:
+    if currently_playing.is_playing is True:
         return False
-    if currently_playing.get("actions", {}).get("disallows", {}).get("resuming") is True:
+    if currently_playing.actions.disallows.resuming is True:
         return False
 
     return True
 
 
-def _can_pause_playback(currently_playing: dict | None, active_device: Device | None) -> bool:
+def _can_pause_playback(currently_playing: Track | None, active_device: Device | None) -> bool:
     if currently_playing is None:
         return False
-    if currently_playing.get("actions", {}).get("disallows", {}).get("pausing") is True:
+    if currently_playing.actions.disallows.pausing is True:
         return False
     return True
 
@@ -207,7 +211,7 @@ def get_current_playing_track(sp: Spotify) -> Track | None:
     if track_data is None:
         return None
 
-    # todo - move results to schema?
+    # todo - make track schema more like the result from spotify
     return Track(
         name=track_data.get("item").get("name"),
         artist=track_data.get("item").get("artists")[0].get("name"),
@@ -215,6 +219,8 @@ def get_current_playing_track(sp: Spotify) -> Track | None:
             **track_data.get("item").get("album")
         ),
         is_playing=track_data.get("is_playing"),
+        device=Device(**track_data.get("device")),
+        actions=Actions(**track_data.get("actions"))
     )
 
 
