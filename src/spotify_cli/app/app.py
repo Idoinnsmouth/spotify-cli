@@ -17,7 +17,8 @@ from spotify_cli.auth import get_spotify_client
 from spotify_cli.config import Config
 from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.track import Track
-from spotify_cli.spotify_service import play_or_pause_track, play_artist, get_devices, get_first_active_device
+from spotify_cli.spotify_service import play_or_pause_track, play_artist, get_devices, get_first_active_device, \
+    get_current_playing_track
 
 
 class SpotifyApp(App):
@@ -32,6 +33,7 @@ class SpotifyApp(App):
 
     sp: Spotify
     active_device: reactive[Device | None] = reactive(default=None)
+    cur_track: Track | None
     _debug_mode: False
 
     def __init__(self):
@@ -40,14 +42,15 @@ class SpotifyApp(App):
         self._debug_mode = True
         self.sp = get_spotify_client(Config())
         self.active_device = get_first_active_device(sp=self.sp)
+        self.cur_track = get_current_playing_track(sp=self.sp)
 
     def compose(self) -> ComposeResult:
         with Container(id="main"):
             with Container(id="track_details"):
-                yield TrackDetail()
+                yield TrackDetail(track=self.cur_track)
 
             with Container(id="devices"):
-                yield ActiveDevice(active_device_name=self.active_device.name)
+                yield ActiveDevice(active_device_name=self.active_device.name if self.active_device else None)
 
         if self._debug_mode:
             yield Pretty(
@@ -113,7 +116,7 @@ class SpotifyApp(App):
 class ActiveDevice(Widget):
     active_device_name: reactive[str | None] = reactive(default=None)
 
-    def __init__(self, active_device_name: str):
+    def __init__(self, active_device_name: str | None):
         super().__init__()
         self.active_device_name = active_device_name
 
