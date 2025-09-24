@@ -88,18 +88,6 @@ def search_spotify(sp: Spotify, query: str, search_element: SearchElementTypes, 
     return SearchResult(**search_res[next(iter(search_res))])
 
 
-def get_artist_albums(sp: Spotify, artist_id: str, country: str) -> list[AlbumSearchItem]:
-    # todo - this does not return all the albums for reason
-    #  for example - mastodon returns 6 albums while the limit here is 20
-    albums_res = sp.artist_albums(artist_id=artist_id, country=country)
-    return [AlbumSearchItem(**album) for album in albums_res.get("items")]
-
-
-def get_album_tracks(sp: Spotify, album_id: str, country: str) -> list[TracksSearchItems]:
-    tracks_res = sp.album_tracks(album_id=album_id, market=country)
-    return [TracksSearchItems(**track) for track in tracks_res.get("items")]
-
-
 def play_artist(sp: Spotify, artist_query, market="from_token") -> TracksSearchItems:
     HARD_LIMIT = 50
     search_result = search_spotify(
