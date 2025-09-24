@@ -79,7 +79,12 @@ def wait_for_device(sp, tries=12, delay=0.5) -> Device | None:
 # region #### Playback ####
 def search_spotify(sp: Spotify, query: str, search_element: SearchElementTypes, limit: int = 10,
                    market: str = "from_token") -> SearchResult:
-    search_res = sp.search(q=f"{search_element.value}:{query}", type=search_element.value, limit=limit)
+    if search_element is SearchElementTypes.ARTIST:
+        # For type artist we search for tracks by artist because it's the fasted way to get as many tracks
+        # as possibles by that artist
+        search_res = sp.search(q=f"{search_element.value}:{query}", type=SearchElementTypes.TRACK.value, limit=limit)
+    else:
+        search_res = sp.search(q=f"{search_element.value}:{query}", type=search_element.value, limit=limit)
     return SearchResult(**search_res[next(iter(search_res))])
 
 
@@ -96,31 +101,17 @@ def get_album_tracks(sp: Spotify, album_id: str, country: str) -> list[TracksSea
 
 
 def play_artist(sp: Spotify, artist_query, market="from_token") -> TracksSearchItems:
-    # todo - to make the delay minimal, we need to first get the first album and tell spotify to play it
-    #  then add the rest of the albums to the queue
-
+    HARD_LIMIT = 50
     search_result = search_spotify(
         sp=sp,
-        query=artist_query,
+        query=f"{artist_query}",
         search_element=SearchElementTypes.ARTIST,
-        limit=1
+        limit=HARD_LIMIT
     )
 
-    if len(search_result.items) == 0:
-        raise NoArtistFound()
-
-    artist = search_result.get_item_by_index(0)
-    albums = get_artist_albums(sp=sp, artist_id=artist.id, country=market)
-
-    if len(albums) == 0:
-        raise NoAlbumsFound()
-
-    all_albums_tracks = []
-    album_tracks = [get_album_tracks(sp=sp, album_id=album.id, country=market) for album in albums]
-    for i in album_tracks:
-        all_albums_tracks.extend(i)
-
-    uris = [track.uri for track in all_albums_tracks]
+    uris: list[str] = []
+    for i in search_result.items:
+        uris.append(i.uri)
 
     ensure_spotify_running()
     device = wait_for_device(sp)
@@ -128,9 +119,7 @@ def play_artist(sp: Spotify, artist_query, market="from_token") -> TracksSearchI
         raise NoActiveDeviceFound()
 
     sp.start_playback(uris=uris, device_id=device.id)
-    ret_album_track = album_tracks[0][0]
-    ret_album_track.album = albums[0]
-    return ret_album_track
+    return search_result.items[0]
 
 
 def play_track(sp: Spotify, song_query) -> TracksSearchItems:
