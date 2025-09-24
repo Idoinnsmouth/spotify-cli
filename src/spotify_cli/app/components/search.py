@@ -9,6 +9,7 @@ from textual.screen import Screen
 from textual.suggester import Suggester
 from textual.widgets import Input, Label, RadioSet, RadioButton, Footer
 
+from spotify_cli.schemas.search import TracksSearchItems
 from spotify_cli.spotify_service import play_artist, play_track, play_album, search_spotify, SearchElementTypes, \
     get_current_playing_track
 
@@ -23,15 +24,13 @@ class SearchScreen(Screen):
 
     sp: Spotify
     print_error_text_to_gutter: callable
-    update_track: callable
     mode = reactive("artist")
 
-    def __init__(self, sp: Spotify, print_error_text_to_gutter: callable, update_track: callable):
+    def __init__(self, sp: Spotify, print_error_text_to_gutter: callable):
         super().__init__()
         self.input: Input | None = None
         self.sp = sp
         self.print_error_text_to_gutter = print_error_text_to_gutter
-        self.update_track = update_track
 
     def compose(self):
         yield Label("Search")
@@ -48,49 +47,42 @@ class SearchScreen(Screen):
         yield self.input
         yield Footer()
 
-
     def on_mount(self):
         self._apply_mode()
 
     def watch_mode(self):
         self._apply_mode()
 
-    #region ##### Events ####
+    # region ##### Events ####
     @on(Input.Submitted, "#search")
-    def handle_artist_submit(self, event: Input.Submitted):
+    def handle_artist_submit(self, event: Input.Submitted) -> TracksSearchItems | None:
+        track = None
         self.input.clear()
 
         try:
             if self.mode == "artist":
-                play_artist(
+                track = play_artist(
                     sp=self.sp,
                     artist_query=event.value
                 )
             elif self.mode == "track":
-                play_track(
+                track = play_track(
                     sp=self.sp,
                     song_query=event.value
                 )
             elif self.mode == "album":
-                play_album(
+                track = play_album(
                     sp=self.sp,
                     album_query=event.value
                 )
-
-            # todo - i'm using sleep currently because without it the track will not update before getting the
-            #  api results. need a better way to do this because this suckssss
-            sleep(5)
-            # todo - find a way to type hint this
-            track = get_current_playing_track(sp=self.sp)
-            self.update_track(track=track)
-
         except Exception as e:
             self.print_error_text_to_gutter([str(e)])
 
-        self.dismiss()
-    #endregion
+        self.dismiss(track)
 
-    #region #### Utils ####
+    # endregion
+
+    # region #### Utils ####
     def _apply_mode(self):
         placeholders = {
             "artist": "Search Artist",
@@ -109,9 +101,10 @@ class SearchScreen(Screen):
         picker = self.query_one("#mode_picker", RadioSet)
         picker.value = self.mode
         self.input.focus()
-    #endregion
 
-    #region #### Actions ####
+    # endregion
+
+    # region #### Actions ####
 
     def on_radio_set_changed(self, event: RadioSet.Changed):
         self.mode = event.pressed.id
@@ -121,7 +114,8 @@ class SearchScreen(Screen):
 
     def action_pop_screen(self):
         self.dismiss()
-    #endregion
+    # endregion
+
 
 class SearchSuggester(Suggester):
     sp: Spotify
@@ -135,7 +129,7 @@ class SearchSuggester(Suggester):
         self.sp = sp
         self.delay = delay
         self._call_id = 0
-        self.search_element_type=search_element_type
+        self.search_element_type = search_element_type
 
     async def get_suggestion(self, value: str) -> str | None:
         # don't want to start suggesting based on only one char
