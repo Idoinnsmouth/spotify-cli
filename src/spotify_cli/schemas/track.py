@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 from spotify_cli.schemas.device import Device
@@ -9,7 +11,7 @@ class Track(BaseModel):
     artist: str
     album: AlbumSearchItem
     device: Device
-    actions: 'Actions'
+    actions: Optional['Actions']
     is_playing: bool
 
 

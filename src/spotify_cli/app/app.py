@@ -1,7 +1,9 @@
 import asyncio
+from time import sleep
 
+from pydantic import ValidationError
 from spotipy import Spotify
-from textual import on, log
+from textual import on, log, work
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal
 from textual.reactive import reactive
@@ -16,6 +18,7 @@ from spotify_cli.app.components.track_details import TrackDetail
 from spotify_cli.auth import get_spotify_client
 from spotify_cli.config import Config
 from spotify_cli.schemas.device import Device
+from spotify_cli.schemas.search import TracksSearchItems
 from spotify_cli.schemas.track import Track
 from spotify_cli.spotify_service import play_or_pause_track, play_artist, get_devices, get_first_active_device, \
     get_current_playing_track
@@ -73,9 +76,33 @@ class SpotifyApp(App):
             SearchScreen(
                 sp=self.sp,
                 print_error_text_to_gutter=self.print_error_text_to_gutter,
-                update_track=self.update_track,
-            )
+            ),
+            self._after_search
         )
+
+    def _after_search(self, track: TracksSearchItems):
+        if track is None:
+            return
+        self.get_and_update_track_after_search_dismiss(track)
+
+    @work(exclusive=True, thread=True, exit_on_error=True)
+    async def get_and_update_track_after_search_dismiss(self, track: TracksSearchItems):
+        try:
+            _track = Track(
+                name=track.name,
+                artist=track.artists[0].name,
+                album=track.album,
+                device=self.active_device,
+                is_playing=True,
+                actions=None
+            )
+        except ValidationError as e:
+            raise e
+        except Exception as e:
+            self.print_error_text_to_gutter([str(e)])
+            return
+
+        self.update_track(_track)
 
     def action_show_change_device_screen(self):
         self.push_screen(
@@ -93,7 +120,10 @@ class SpotifyApp(App):
     # endregion
 
     # region #### Utils ####
-    def update_track(self, track: Track):
+    def update_track(self, track: Track | None):
+        if track is None:
+            return
+
         # todo - make this not suck
         track_details = self.query_one("#track_details", Container)
         track_details.children[0].track = track

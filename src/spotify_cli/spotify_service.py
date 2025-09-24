@@ -1,6 +1,8 @@
 import subprocess
+import threading
 import time
 from enum import Enum
+from queue import Queue
 
 from spotipy import Spotify
 
@@ -93,7 +95,7 @@ def get_album_tracks(sp: Spotify, album_id: str, country: str) -> list[TracksSea
     return [TracksSearchItems(**track) for track in tracks_res.get("items")]
 
 
-def play_artist(sp: Spotify, artist_query, market="from_token"):
+def play_artist(sp: Spotify, artist_query, market="from_token") -> TracksSearchItems:
     # todo - to make the delay minimal, we need to first get the first album and tell spotify to play it
     #  then add the rest of the albums to the queue
 
@@ -126,9 +128,12 @@ def play_artist(sp: Spotify, artist_query, market="from_token"):
         raise NoActiveDeviceFound()
 
     sp.start_playback(uris=uris, device_id=device.id)
+    ret_album_track = album_tracks[0][0]
+    ret_album_track.album = albums[0]
+    return ret_album_track
 
 
-def play_track(sp: Spotify, song_query):
+def play_track(sp: Spotify, song_query) -> TracksSearchItems:
     search_res = search_spotify(
         sp=sp,
         query=song_query,
@@ -148,13 +153,22 @@ def play_track(sp: Spotify, song_query):
 
     sp.start_playback(uris=uris, device_id=device.id)
 
+    return search_res.get_item_by_index()
 
-def play_album(sp: Spotify, album_query):
+
+def play_album(sp: Spotify, album_query) -> TracksSearchItems:
     album_res = search_spotify(sp=sp, query=album_query, search_element=SearchElementTypes.ALBUM, limit=1)
     albums = album_res.items
 
     if len(albums) == 0:
         raise NoAlbumsFound()
+
+    returned_track = Queue()
+    thread = threading.Thread(
+        target=_get_first_track_from_album_search_item,
+        args=(sp, albums[0], returned_track)
+    )
+    thread.start()
 
     ensure_spotify_running()
     device = wait_for_device(sp)
@@ -162,8 +176,23 @@ def play_album(sp: Spotify, album_query):
         raise NoActiveDeviceFound()
 
     sp.start_playback(context_uri=albums[0].uri, device_id=device.id)
+    thread.join()
+    return returned_track.get()
 
 
+def _get_first_track_from_album_search_item(sp: Spotify, album: AlbumSearchItem, returned_track: Queue):
+    album_tracks = sp.album_tracks(album.id, limit=1)
+    _album_track = album_tracks.get("items")[0]
+    returned_track.put(
+        TracksSearchItems(
+            **_album_track,
+            is_playable=True,
+            album=album,
+        )
+    )
+
+
+# todo - currently this work but this could be written better
 def play_or_pause_track(sp: Spotify, active_device: Device | None = None):
     if active_device is None:
         active_device = get_first_active_device(sp=sp)
@@ -229,7 +258,7 @@ def get_current_playing_track(sp: Spotify) -> Track | None:
 if __name__ == "__main__":
     _cfg = Config()
     _sp = get_spotify_client(_cfg)
-    _devices = get_devices(sp=_sp)
+    _res = play_artist(sp=_sp, artist_query="type o negative")
 
-    play_or_pause_track(sp=_sp, active_device=_devices[0])
+    # play_or_pause_track(sp=_sp, active_device=_devices[0])
     print("hello")
