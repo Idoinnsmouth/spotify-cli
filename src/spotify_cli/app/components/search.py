@@ -169,7 +169,7 @@ class SearchSuggester(Suggester):
         if res is None or res.total == 0:
             return None
 
-        top_result = max(res.items, key=attrgetter("popularity"))
+        top_result = max(res.items, key=lambda i: getattr(i, 'popularity', 0))
         return top_result.name
 
     @staticmethod
