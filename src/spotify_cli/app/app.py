@@ -30,7 +30,7 @@ class SpotifyApp(App):
     BINDINGS = [
         ("p", "pause_start_playback", "Pause/Resume"),
         ("s", "show_search", "Search"),
-        ("d", "show_change_device_screen", "Chance Device"),
+        ("d", "show_change_device_screen", "Change Device"),
         ("q", "quit", "Quit"),
     ]
 
