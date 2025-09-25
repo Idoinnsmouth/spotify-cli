@@ -9,23 +9,16 @@
 
         #track_layout {  
             #track_text_details {
-                width: 9fr;
+                width: 70%;
             }
 
             #album_cover {
-                width: 12fr;
-                
-                Container {
-                    # width: 100%;
-                    border: solid yellow;
-                }
+                width: 30%;
+                content-align: right middle;
                 
                 Static {
+                    height: 32;
                     width: 100%;
-                    height: 100%;
-                    content-align: center middle;
-                    padding: 0;
-                    overflow: hidden;
                 }
             }
         }

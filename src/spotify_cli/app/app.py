@@ -47,6 +47,9 @@ class SpotifyApp(App):
         self.active_device = get_first_active_device(sp=self.sp)
         self.cur_track = get_current_playing_track(sp=self.sp)
 
+    def on_mount(self) -> None:
+        self.theme = "tokyo-night"
+
     def compose(self) -> ComposeResult:
         with Container(id="main"):
             with Container(id="track_details"):

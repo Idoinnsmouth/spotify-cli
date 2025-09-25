@@ -42,7 +42,8 @@ class AlbumSearchItem(BaseModel):
 
 
     def get_album_image(self) -> SpotifyImage:
-        return self.images[0]
+        # last image is the smallest (normally 64x64)
+        return self.images[-1]
 
 
 class TracksSearchItems(BaseModel):
