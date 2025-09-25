@@ -170,4 +170,4 @@ class SearchSuggester(Suggester):
     @staticmethod
     @lru_cache(maxsize=256)
     def _search_spotify_cached(v: str, element_type: SearchElementTypes, sp: Spotify) -> SearchResult | None:
-        return search_spotify_suggestions(sp=sp, query=v, search_element=element_type, limit=10)
+        return search_spotify_suggestions(sp=sp, query=v, search_element=element_type, limit=1)
