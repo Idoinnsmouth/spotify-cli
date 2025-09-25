@@ -1,5 +1,6 @@
 import asyncio
 from functools import lru_cache
+from operator import attrgetter
 from time import sleep
 
 from spotipy import Spotify
@@ -157,7 +158,7 @@ class SearchSuggester(Suggester):
                 asyncio.to_thread(self._search_spotify_cached, v, self.search_element_type, self.sp),
                 timeout=2.5,
             )
-        except Exception:
+        except Exception as e:
             # ignore errors in suggester path to keep typing smooth
             return None
 
@@ -165,9 +166,15 @@ class SearchSuggester(Suggester):
         if my_id != self._call_id:
             return None
 
-        return res.items[0].name if res.total > 0 else None
+        if res is None or res.total == 0:
+            return None
+
+        top_result = max(res.items, key=attrgetter("popularity"))
+        return top_result.name
 
     @staticmethod
     @lru_cache(maxsize=256)
     def _search_spotify_cached(v: str, element_type: SearchElementTypes, sp: Spotify) -> SearchResult | None:
-        return search_spotify_suggestions(sp=sp, query=v, search_element=element_type, limit=1)
+        # in results album have no popularity so there is no way to get the top result as in spotify app
+        search_limit = 1 if element_type is SearchElementTypes.ALBUM else 10
+        return search_spotify_suggestions(sp=sp, query=v, search_element=element_type, limit=search_limit)
