@@ -70,7 +70,7 @@ class TrackDetail(Widget):
         # todo - maybe do the size dynmicly to the terminal size
         img = get_image_from_url(
             album_image.url,
-            (50,50)
+            (32,32)
         )
         self.pixel_view.update(img)
 

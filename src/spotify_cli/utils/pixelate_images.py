@@ -9,5 +9,5 @@ def get_image_from_url(image_url: str, size: tuple[int, int]) -> Pixels:
     resp = get(image_url)
     resp.raise_for_status()
 
-    pill_image = Image.open(BytesIO(resp.content))
-    return Pixels.from_image(pill_image, resize=size)
+    pill_image = Image.open(BytesIO(resp.content)).resize(size)
+    return Pixels.from_image(pill_image)
