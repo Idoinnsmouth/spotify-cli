@@ -77,7 +77,7 @@ def wait_for_device(sp, tries=12, delay=0.5) -> Device | None:
 # endregion
 
 # region #### Playback ####
-def search_spotify(sp: Spotify, query: str, search_element: SearchElementTypes, limit: int = 10,
+def search_spotify_tracks(sp: Spotify, query: str, search_element: SearchElementTypes, limit: int = 10,
                    market: str = "from_token") -> SearchResult:
     if search_element is SearchElementTypes.ARTIST:
         # For type artist we search for tracks by artist because it's the fasted way to get as many tracks
@@ -88,14 +88,17 @@ def search_spotify(sp: Spotify, query: str, search_element: SearchElementTypes, 
     return SearchResult(**search_res[next(iter(search_res))])
 
 
+def search_spotify_suggestions(sp: Spotify, query: str, search_element: SearchElementTypes, limit: int = 10,
+                   market: str = "from_token") -> SearchResult:
+    """This function is to be used for the suggesters, not finding playbacks"""
+    search_res = sp.search(q=f"{search_element.value}:{query}", type=search_element.value, limit=limit)
+    return SearchResult(**search_res[next(iter(search_res))])
+
+
 def play_artist(sp: Spotify, artist_query, market="from_token") -> TracksSearchItems:
     HARD_LIMIT = 50
-    search_result = search_spotify(
-        sp=sp,
-        query=f"{artist_query}",
-        search_element=SearchElementTypes.ARTIST,
-        limit=HARD_LIMIT
-    )
+    search_result = search_spotify_tracks(sp=sp, query=f"{artist_query}", search_element=SearchElementTypes.ARTIST,
+                                          limit=HARD_LIMIT)
 
     uris: list[str] = []
     for i in search_result.items:
@@ -111,12 +114,7 @@ def play_artist(sp: Spotify, artist_query, market="from_token") -> TracksSearchI
 
 
 def play_track(sp: Spotify, song_query) -> TracksSearchItems:
-    search_res = search_spotify(
-        sp=sp,
-        query=song_query,
-        search_element=SearchElementTypes.TRACK,
-        limit=1,
-    )
+    search_res = search_spotify_tracks(sp=sp, query=song_query, search_element=SearchElementTypes.TRACK, limit=1)
 
     if len(search_res.items) == 0:
         raise NoTrackFound()
@@ -134,7 +132,7 @@ def play_track(sp: Spotify, song_query) -> TracksSearchItems:
 
 
 def play_album(sp: Spotify, album_query) -> TracksSearchItems:
-    album_res = search_spotify(sp=sp, query=album_query, search_element=SearchElementTypes.ALBUM, limit=1)
+    album_res = search_spotify_tracks(sp=sp, query=album_query, search_element=SearchElementTypes.ALBUM, limit=1)
     albums = album_res.items
 
     if len(albums) == 0:
