@@ -19,7 +19,6 @@ class TrackDetail(Widget):
         self.track = track
         self.pixel_view = Static()
 
-
     def compose(self):
         if not self.track:
             yield Static("No track selected")
@@ -28,8 +27,8 @@ class TrackDetail(Widget):
         yield Horizontal(
             Container(
                 Static(f"Track: {self.track.name}"),
-                    Static(f"Album: {self.track.album.name}"),
-                    Static(f"Artist: {self.track.artist}"),
+                Static(f"Album: {self.track.album.name}"),
+                Static(f"Artist: {self.track.artist}"),
                 id="track_text_details"
             ),
             Container(
@@ -43,12 +42,10 @@ class TrackDetail(Widget):
         if self.track:
             self._start_service_call(self.track)
 
-
     def watch_track(self, old: "Track | None", new: "Track | None"):
         if new is None or (old and old.name == new.name):
             return
         self._start_service_call(new)
-
 
     def _start_service_call(self, track: "Track"):
         """Start/replace a background job for the current track."""
@@ -70,9 +67,6 @@ class TrackDetail(Widget):
         # todo - maybe do the size dynmicly to the terminal size
         img = get_image_from_url(
             album_image.url,
-            (32,32)
+            (32, 32)
         )
         self.pixel_view.update(img)
-
-
-
