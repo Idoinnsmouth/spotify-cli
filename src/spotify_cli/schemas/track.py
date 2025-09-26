@@ -11,7 +11,7 @@ class Track(BaseModel):
     artist: str
     album: AlbumSearchItem
     device: Device
-    actions: Optional['Actions']
+    actions: Optional['Actions'] = None
     is_playing: bool
 
 
