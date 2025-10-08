@@ -11,6 +11,7 @@ from spotify_cli.config import Config
 from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.search import SearchResult, AlbumSearchItem, TracksSearchItems
 from spotify_cli.schemas.track import Track, Actions
+from spotify_cli.utils.caching import cache_path, load_cache, new_cache, save_cache
 
 
 class SearchElementTypes(Enum):
@@ -78,7 +79,7 @@ def wait_for_device(sp, tries=12, delay=0.5) -> Device | None:
 
 # region #### Playback ####
 def search_spotify_tracks(sp: Spotify, query: str, search_element: SearchElementTypes, limit: int = 10,
-                   market: str = "from_token") -> SearchResult:
+                          market: str = "from_token") -> SearchResult:
     if search_element is SearchElementTypes.ARTIST:
         # For type artist we search for tracks by artist because it's the fasted way to get as many tracks
         # as possibles by that artist
@@ -89,7 +90,7 @@ def search_spotify_tracks(sp: Spotify, query: str, search_element: SearchElement
 
 
 def search_spotify_suggestions(sp: Spotify, query: str, search_element: SearchElementTypes, limit: int = 10,
-                   market: str = "from_token") -> SearchResult:
+                               market: str = "from_token") -> SearchResult:
     """This function is to be used for the suggesters, not finding playbacks"""
     search_res = sp.search(q=f"{search_element.value}:{query}", type=search_element.value, limit=limit)
     return SearchResult(**search_res[next(iter(search_res))])
@@ -230,10 +231,76 @@ def get_current_playing_track(sp: Spotify) -> Track | None:
 
 # endregion
 
+#### Library ####
+def get_library_albums_cached(
+        sp: Spotify,
+        ttl_sec: int = 900,
+) -> list[AlbumSearchItem]:
+    path = cache_path()
+    cache = load_cache(path) or new_cache()
+
+    now = time.time()
+    if cache.get("updated_ts") and (now - cache.get("updated_ts") < ttl_sec):
+        # Cache is fresh by TTL—return as is.
+        return cache["entries"]
+
+    # Freshness peek: get the newest 'added_at' from API
+    peek = sp.current_user_saved_albums(limit=1, offset=0)
+    peek_items = peek.get("items", [])
+    newest_added_at = peek_items[0]["added_at"] if peek_items else None
+
+    if newest_added_at and newest_added_at == cache["latest_added_at"]:
+        # No change since last seen—refresh TTL and return
+        cache["updated_ts"] = now
+        save_cache(path, cache)
+        return cache["entries"]
+
+    # There are changes or first load: delta-fetch
+    known_ids = set(cache["album_ids"])
+    new_entries: list[dict] = []
+
+    offset = 0
+    while True:
+        BATCH = 50
+        res = sp.current_user_saved_albums(limit=BATCH, offset=offset)
+        items = res.get("items", [])
+        if not items:
+            break
+
+        hit_known = False
+        for it in items:
+            added_at = it.get("added_at")
+            album = it.get("album", {})
+            album_id = album.get("id")
+
+            if album_id in known_ids:
+                hit_known = True
+                break
+
+            new_entries.append({"added_at": added_at, "album": AlbumSearchItem(**album)})
+
+        # Stop if we reached previously known territory or the last page
+        if hit_known or len(items) < BATCH:
+            break
+
+        offset += BATCH
+
+    if new_entries:
+        cache["entries"] = [entry for entry in new_entries] + cache["entries"]
+        cache["album_ids"] = list(set(cache["album_ids"]).union(a["album"].id for a in new_entries))
+        cache["latest_added_at"] = newest_added_at or cache["latest_added_at"]
+
+    cache["updated_ts"] = now
+    cache["entries"].sort(key=lambda e: e["added_at"], reverse=True)
+
+    save_cache(path, cache)
+    return [entry["album"] for entry in cache["entries"]]
+
+
 if __name__ == "__main__":
     _cfg = Config()
     _sp = get_spotify_client(_cfg)
-    _res = play_artist(sp=_sp, artist_query="type o negative")
+    _res = get_library_albums_cached(sp=_sp)
 
     # play_or_pause_track(sp=_sp, active_device=_devices[0])
     print("hello")

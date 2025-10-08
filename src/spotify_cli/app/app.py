@@ -6,15 +6,16 @@ from pydantic import ValidationError
 from spotipy import Spotify, SpotifyException
 from textual import on, log, work
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal
+from textual.containers import Container, Horizontal, Vertical
 from textual.message import Message
 from textual.reactive import reactive
 from textual.screen import Screen
 from textual.suggester import Suggester
 from textual.widget import Widget, AwaitMount
-from textual.widgets import Header, Footer, Input, Pretty, Placeholder, Static
+from textual.widgets import Header, Footer, Input, Pretty, Placeholder, Static, DataTable
 
 from spotify_cli.app.components.choose_device import ChooseDevice
+from spotify_cli.app.components.library import Library
 from spotify_cli.app.components.search import SearchScreen
 from spotify_cli.app.components.track_details import TrackDetail
 from spotify_cli.auth import get_spotify_client
@@ -24,7 +25,7 @@ from spotify_cli.schemas.playback import PlaybackState
 from spotify_cli.schemas.search import TracksSearchItems
 from spotify_cli.schemas.track import Track
 from spotify_cli.spotify_service import play_or_pause_track, play_artist, get_devices, get_first_active_device, \
-    get_current_playing_track
+    get_current_playing_track, get_library_albums_cached
 
 
 class SpotifyApp(App):
@@ -48,6 +49,7 @@ class SpotifyApp(App):
     cur_track: Track | None
     _debug_mode: False
     _debug_message = reactive([])
+    _cancelable_sleep = None
 
     def __init__(self):
         super().__init__()
@@ -63,14 +65,19 @@ class SpotifyApp(App):
     def on_mount(self) -> None:
         self.theme = "tokyo-night"
         self.run_worker(self._poll_loop, thread=True, exclusive=True, group="pollers")
+        self.query_one(Library).albums = get_library_albums_cached(sp=self.sp)
 
     async def on_unmount(self) -> None:
         self._stop = True
 
+        if self._cancelable_sleep:
+            self._cancelable_sleep.cancel()
+
     def compose(self) -> ComposeResult:
         with Container(id="main"):
-            with Container(id="track_details"):
+            with Vertical(id="track_details"):
                 yield TrackDetail(track=self.cur_track)
+                yield Library(sp=self.sp)
 
             with Container(id="devices"):
                 yield ActiveDevice(active_device_name=self.active_device.name if self.active_device else None)
@@ -81,11 +88,6 @@ class SpotifyApp(App):
                 id="debug_gutter"
             )
         yield Footer()
-
-    # region #### Watch ####
-    # def watch_active_device(self):
-
-    # endregion
 
     # region #### Actions ####
     def action_pause_start_playback(self):
@@ -144,9 +146,8 @@ class SpotifyApp(App):
         if track is None:
             return
 
-        # todo - make this not suck
-        track_details = self.query_one("#track_details", Container)
-        track_details.children[0].track = track
+        track_details = self.query_one(TrackDetail)
+        track_details.track = track
 
     def change_active_device(self, device: Device):
         if not device:
@@ -189,7 +190,13 @@ class SpotifyApp(App):
             else:
                 delay = self.POLL_IDLE
 
-            await asyncio.sleep(delay)
+            # This is calling a custom task with sleep so it could be canceled on unmount and clear the terminal
+            # right away instead of waiting for the sleep timer to run out
+            self._cancelable_sleep = asyncio.create_task(self._cancelable_asyncio_sleep(delay))
+
+    @staticmethod
+    async def _cancelable_asyncio_sleep(delay: float):
+        await asyncio.sleep(delay)
 
     def _safe_fetch_playback(self):
         def _safe_get_retry_after(e: Exception) -> float | None:

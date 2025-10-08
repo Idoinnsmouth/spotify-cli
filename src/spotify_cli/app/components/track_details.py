@@ -1,7 +1,7 @@
 from math import floor
 
 from rich.text import Text
-from textual.containers import Container, Horizontal, Grid
+from textual.containers import Container, Horizontal, Grid, Vertical
 from textual.reactive import reactive
 from textual.widget import Widget, AwaitMount
 from textual.widgets import Static
@@ -24,7 +24,7 @@ class TrackDetail(Widget):
             yield Static("No track selected")
             return
 
-        yield Horizontal(
+        yield Vertical(
             Container(
                 Static(f"Track: {self.track.name}"),
                 Static(f"Album: {self.track.album.name}"),
@@ -67,6 +67,6 @@ class TrackDetail(Widget):
         # todo - maybe do the size dynmicly to the terminal size
         img = get_image_from_url(
             album_image.url,
-            (32, 32)
+            (23, 23)
         )
         self.pixel_view.update(img)
