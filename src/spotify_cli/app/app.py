@@ -24,7 +24,7 @@ from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.playback import PlaybackState
 from spotify_cli.schemas.search import TracksSearchItems
 from spotify_cli.schemas.track import Track
-from spotify_cli.spotify_service import play_or_pause_track, play_artist, get_devices, get_first_active_device, \
+from spotify_cli.spotify_service import play_or_pause_track, get_first_active_device, \
     get_current_playing_track, get_library_albums_cached
 
 
@@ -65,6 +65,7 @@ class SpotifyApp(App):
     def on_mount(self) -> None:
         self.theme = "tokyo-night"
         self.run_worker(self._poll_loop, thread=True, exclusive=True, group="pollers")
+        # todo - get albums via another thread and add loading to library
         self.query_one(Library).albums = get_library_albums_cached(sp=self.sp)
 
     async def on_unmount(self) -> None:
@@ -212,7 +213,6 @@ class SpotifyApp(App):
             payload = self.sp.current_playback()
             return PlaybackState.to_state(payload), None
         except Exception as e:
-            raise (e)  # remove this when you fill safe about the re-trie calls
             retry_after = _safe_get_retry_after(e)
             if retry_after is not None:
                 return None, retry_after

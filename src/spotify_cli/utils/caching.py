@@ -37,8 +37,13 @@ def load_cache(path: Path) -> SavedAlbumsCache | None:
     data.setdefault("album_ids", [])
     data.setdefault("updated_ts", 0.0)
 
-    data["entries"] = [AlbumSearchItem(**entry["album"]) for entry in data["entries"]]
-    # data["entries"] = [AlbumSearchItem(**entry) for entry in data["entries"]]
+    data["entries"] = [
+        {
+            "album": AlbumSearchItem(**entry["album"]),
+            "added_at": entry["added_at"],
+        } for entry in data["entries"]
+    ]
+
     return data
 
 

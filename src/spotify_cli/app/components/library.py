@@ -6,6 +6,7 @@ from textual.widget import Widget
 from textual.widgets import DataTable
 
 from spotify_cli.schemas.search import AlbumSearchItem
+from spotify_cli.spotify_service import play_by_uris_or_context_uri
 
 
 class Library(Widget):
@@ -34,5 +35,5 @@ class Library(Widget):
         for album in new:
             dt.add_row(album.get_albums_artists(), album.name, key=album.uri)
 
-    async def on_data_table_row_selected(self, event: DataTable.RowSelected):
-        self.sp.start_playback(context_uri=event.row_key.value)
+    def on_data_table_row_selected(self, event: DataTable.RowSelected):
+        play_by_uris_or_context_uri(sp=self.sp, context_uri=event.row_key.value)
