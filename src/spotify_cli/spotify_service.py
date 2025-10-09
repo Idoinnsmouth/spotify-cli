@@ -1,3 +1,4 @@
+import asyncio
 import subprocess
 import threading
 import time
@@ -11,6 +12,7 @@ from spotify_cli.config import Config
 from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.search import SearchResult, AlbumSearchItem, TracksSearchItems
 from spotify_cli.schemas.track import Track, Actions
+from spotify_cli.utils.caching import cache_path, load_cache, new_cache, save_cache
 
 
 class SearchElementTypes(Enum):
@@ -77,8 +79,7 @@ def wait_for_device(sp, tries=12, delay=0.5) -> Device | None:
 # endregion
 
 # region #### Playback ####
-def search_spotify_tracks(sp: Spotify, query: str, search_element: SearchElementTypes, limit: int = 10,
-                   market: str = "from_token") -> SearchResult:
+def search_spotify_tracks(sp: Spotify, query: str, search_element: SearchElementTypes, limit: int = 10) -> SearchResult:
     if search_element is SearchElementTypes.ARTIST:
         # For type artist we search for tracks by artist because it's the fasted way to get as many tracks
         # as possibles by that artist
@@ -89,31 +90,27 @@ def search_spotify_tracks(sp: Spotify, query: str, search_element: SearchElement
 
 
 def search_spotify_suggestions(sp: Spotify, query: str, search_element: SearchElementTypes, limit: int = 10,
-                   market: str = "from_token") -> SearchResult:
+                               market: str = "from_token") -> SearchResult:
     """This function is to be used for the suggesters, not finding playbacks"""
     search_res = sp.search(q=f"{search_element.value}:{query}", type=search_element.value, limit=limit)
     return SearchResult(**search_res[next(iter(search_res))])
 
 
-def play_artist(sp: Spotify, artist_query, market="from_token") -> TracksSearchItems:
+def search_artist_and_play(sp: Spotify, artist_query) -> TracksSearchItems:
     HARD_LIMIT = 50
-    search_result = search_spotify_tracks(sp=sp, query=f"{artist_query}", search_element=SearchElementTypes.ARTIST,
+    search_result = search_spotify_tracks(sp=sp, query=f"{artist_query}",
+                                          search_element=SearchElementTypes.ARTIST,
                                           limit=HARD_LIMIT)
 
     uris: list[str] = []
     for i in search_result.items:
         uris.append(i.uri)
 
-    ensure_spotify_running()
-    device = wait_for_device(sp)
-    if device is None:
-        raise NoActiveDeviceFound()
-
-    sp.start_playback(uris=uris, device_id=device.id)
-    return search_result.items[0]
+    play_by_uris_or_context_uri(sp=sp, uris=uris)
+    return search_result.get_item_by_index()
 
 
-def play_track(sp: Spotify, song_query) -> TracksSearchItems:
+def search_track_and_play(sp: Spotify, song_query) -> TracksSearchItems:
     search_res = search_spotify_tracks(sp=sp, query=song_query, search_element=SearchElementTypes.TRACK, limit=1)
 
     if len(search_res.items) == 0:
@@ -121,49 +118,38 @@ def play_track(sp: Spotify, song_query) -> TracksSearchItems:
 
     uris = [track.uri for track in search_res.items]
 
-    ensure_spotify_running()
-    device = wait_for_device(sp)
-    if device is None:
-        raise NoActiveDeviceFound()
-
-    sp.start_playback(uris=uris, device_id=device.id)
-
+    play_by_uris_or_context_uri(sp=sp, uris=uris)
     return search_res.get_item_by_index()
 
 
-def play_album(sp: Spotify, album_query) -> TracksSearchItems:
+def search_album_and_play(sp: Spotify, album_query) -> TracksSearchItems:
     album_res = search_spotify_tracks(sp=sp, query=album_query, search_element=SearchElementTypes.ALBUM, limit=1)
-    albums = album_res.items
+    albums: list[AlbumSearchItem] = album_res.items
 
     if len(albums) == 0:
         raise NoAlbumsFound()
 
-    returned_track = Queue()
-    thread = threading.Thread(
-        target=_get_first_track_from_album_search_item,
-        args=(sp, albums[0], returned_track)
-    )
-    thread.start()
+    play_by_uris_or_context_uri(sp=sp, context_uri=albums[0].uri)
+    returned_track = _get_first_track_from_album_search_item(sp=sp, album=albums[0])
+    return returned_track
 
+
+def play_by_uris_or_context_uri(sp: Spotify, uris: list[str] = None, context_uri: str = None):
     ensure_spotify_running()
     device = wait_for_device(sp)
     if device is None:
         raise NoActiveDeviceFound()
 
-    sp.start_playback(context_uri=albums[0].uri, device_id=device.id)
-    thread.join()
-    return returned_track.get()
+    sp.start_playback(uris=uris, context_uri=context_uri, device_id=device.id)
 
 
-def _get_first_track_from_album_search_item(sp: Spotify, album: AlbumSearchItem, returned_track: Queue):
+def _get_first_track_from_album_search_item(sp: Spotify, album: AlbumSearchItem) -> TracksSearchItems:
     album_tracks = sp.album_tracks(album.id, limit=1)
     _album_track = album_tracks.get("items")[0]
-    returned_track.put(
-        TracksSearchItems(
-            **_album_track,
-            is_playable=True,
-            album=album,
-        )
+    return TracksSearchItems(
+        **_album_track,
+        is_playable=True,
+        album=album,
     )
 
 
@@ -230,10 +216,76 @@ def get_current_playing_track(sp: Spotify) -> Track | None:
 
 # endregion
 
+#### Library ####
+def get_library_albums_cached(
+        sp: Spotify,
+        ttl_sec: int = 900,
+) -> list[AlbumSearchItem]:
+    path = cache_path()
+    cache = load_cache(path) or new_cache()
+
+    now = time.time()
+    if cache.get("updated_ts") and (now - cache.get("updated_ts") < ttl_sec):
+        # Cache is fresh by TTL—return as is.
+        return [entry["album"] for entry in cache["entries"]]
+
+    # Freshness peek: get the newest 'added_at' from API
+    peek = sp.current_user_saved_albums(limit=1, offset=0)
+    peek_items = peek.get("items", [])
+    newest_added_at = peek_items[0]["added_at"] if peek_items else None
+
+    if newest_added_at and newest_added_at == cache["latest_added_at"]:
+        # No change since last seen—refresh TTL and return
+        cache["updated_ts"] = now
+        save_cache(path, cache)
+        return [entry["album"] for entry in cache["entries"]]
+
+    # There are changes or first load: delta-fetch
+    known_ids = set(cache["album_ids"])
+    new_entries: list[dict] = []
+
+    offset = 0
+    while True:
+        BATCH = 50
+        res = sp.current_user_saved_albums(limit=BATCH, offset=offset)
+        items = res.get("items", [])
+        if not items:
+            break
+
+        hit_known = False
+        for it in items:
+            added_at = it.get("added_at")
+            album = it.get("album", {})
+            album_id = album.get("id")
+
+            if album_id in known_ids:
+                hit_known = True
+                break
+
+            new_entries.append({"added_at": added_at, "album": AlbumSearchItem(**album)})
+
+        # Stop if we reached previously known territory or the last page
+        if hit_known or len(items) < BATCH:
+            break
+
+        offset += BATCH
+
+    if new_entries:
+        cache["entries"] = [entry for entry in new_entries] + cache["entries"]
+        cache["album_ids"] = list(set(cache["album_ids"]).union(a["album"].id for a in new_entries))
+        cache["latest_added_at"] = newest_added_at or cache["latest_added_at"]
+
+    cache["updated_ts"] = now
+    cache["entries"].sort(key=lambda e: e["added_at"], reverse=True)
+
+    save_cache(path, cache)
+    return [entry["album"] for entry in cache["entries"]]
+
+
 if __name__ == "__main__":
     _cfg = Config()
     _sp = get_spotify_client(_cfg)
-    _res = play_artist(sp=_sp, artist_query="type o negative")
+    _res = get_library_albums_cached(sp=_sp)
 
     # play_or_pause_track(sp=_sp, active_device=_devices[0])
     print("hello")

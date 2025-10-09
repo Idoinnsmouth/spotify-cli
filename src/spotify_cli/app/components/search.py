@@ -12,7 +12,8 @@ from textual.suggester import Suggester
 from textual.widgets import Input, Label, RadioSet, RadioButton, Footer
 
 from spotify_cli.schemas.search import TracksSearchItems, SearchResult
-from spotify_cli.spotify_service import play_artist, play_track, play_album, search_spotify_tracks, SearchElementTypes, \
+from spotify_cli.spotify_service import search_artist_and_play, search_track_and_play, search_album_and_play, \
+    search_spotify_tracks, SearchElementTypes, \
     get_current_playing_track, search_spotify_suggestions
 
 
@@ -63,20 +64,14 @@ class SearchScreen(Screen):
 
         try:
             if self.mode == "artist":
-                track = play_artist(
+                track = search_artist_and_play(
                     sp=self.sp,
                     artist_query=event.value
                 )
             elif self.mode == "track":
-                track = play_track(
-                    sp=self.sp,
-                    song_query=event.value
-                )
+                track = search_track_and_play(sp=self.sp, song_query=event.value)
             elif self.mode == "album":
-                track = play_album(
-                    sp=self.sp,
-                    album_query=event.value
-                )
+                track = search_album_and_play(sp=self.sp, album_query=event.value)
         except Exception as e:
             self.print_error_text_to_gutter([str(e)])
 

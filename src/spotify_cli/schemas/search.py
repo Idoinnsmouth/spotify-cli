@@ -17,6 +17,7 @@ class SearchResult(BaseModel):
     def get_item_by_index(self, idx=0) -> Union['ArtistSearchItem', 'AlbumSearchItem', 'TracksSearchItems']:
         return self.items[idx]
 
+
 class ArtistSearchItem(BaseModel):
     genres: Optional[list[str]] = None
     href: str
@@ -40,10 +41,12 @@ class AlbumSearchItem(BaseModel):
     uri: str
     artists: list[ArtistSearchItem]
 
-
     def get_album_image(self) -> SpotifyImage:
         # last image is the smallest (normally 64x64)
         return self.images[-1]
+
+    def get_albums_artists(self) -> str:
+        return ", ".join([artist.name for artist in self.artists])
 
 
 class TracksSearchItems(BaseModel):
@@ -59,5 +62,3 @@ class TracksSearchItems(BaseModel):
     type: str
     uri: str
     name: str
-
-

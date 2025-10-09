@@ -6,7 +6,7 @@ from spotipy import Spotify
 from spotify_cli.app.app import SpotifyApp
 from spotify_cli.auth import get_spotify_client
 from spotify_cli.config import Config
-from spotify_cli.spotify_service import play_artist
+from spotify_cli.spotify_service import search_artist_and_play
 
 def get_client() -> Spotify:
     cfg = Config()
@@ -54,7 +54,7 @@ def play_cmd(query, qtype):
         return
 
     if qtype == "artist":
-        play_artist(sp, q)
+        search_artist_and_play(sp, q)
     # elif qtype == "track":
     #     play_track(sp, q)
     # else:

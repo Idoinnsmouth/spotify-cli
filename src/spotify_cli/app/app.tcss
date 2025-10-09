@@ -6,21 +6,18 @@
     #track_details{
         padding: 1 5 1 1;
         box-sizing: border-box;
+        layout: grid;
+        grid-size: 2 1;
+        grid-columns: 3fr 8fr;
 
-        #track_layout {  
-            #track_text_details {
-                width: 70%;
-            }
+        #track_layout {
+            layout: grid;
+            grid-size: 1 2;
+            grid-rows: 3fr 8fr;
+        }
 
-            #album_cover {
-                width: 30%;
-                content-align: right middle;
-                
-                Static {
-                    height: 32;
-                    width: 100%;
-                }
-            }
+        #album_cover {
+            padding: 0 10;
         }
     }
 
