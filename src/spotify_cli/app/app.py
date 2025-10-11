@@ -1,6 +1,8 @@
 import asyncio
+import datetime
 import time
 from time import sleep
+from typing import Optional
 
 from pydantic import ValidationError
 from spotipy import Spotify, SpotifyException
@@ -31,6 +33,7 @@ from spotify_cli.spotify_service import play_or_pause_track, get_first_active_de
 class SpotifyApp(App):
     CSS_PATH = "app.tcss"
     ENABLE_COMMAND_PALETTE = False
+    TITLE = "Spotify TUI"
     BINDINGS = [
         ("p", "pause_start_playback", "Pause/Resume"),
         ("s", "show_search", "Search"),
@@ -43,6 +46,7 @@ class SpotifyApp(App):
     POLL_PLAYING = 5.0
     POLL_PAUSED = 10.0
     POLL_IDLE = 25.0
+    MAX_POLL_IDLE_OR_PAUSED_TIME = 3600
 
     sp: Spotify
     active_device: reactive[Device | None] = reactive(default=None)
@@ -50,6 +54,7 @@ class SpotifyApp(App):
     _debug_mode: False
     _debug_message = reactive([])
     _cancelable_sleep = None
+    _first_instance_of_paused_or_idle_playback_poll: Optional[datetime] = None
 
     def __init__(self):
         super().__init__()
@@ -165,6 +170,8 @@ class SpotifyApp(App):
             gutter.update(errors)
 
     async def _poll_loop(self) -> None:
+        _is_idle_or_paused = False
+
         while not self._stop:
             state, retry_after = self._safe_fetch_playback()
 
@@ -181,15 +188,22 @@ class SpotifyApp(App):
                 if state.is_playing and state.progress_ms and state.duration_ms:
                     remaining = (state.duration_ms - state.progress_ms) / 1000.0
                     base = self.POLL_PLAYING
+                    self._first_instance_of_paused_or_idle_playback_poll = None
 
                     # poll faster near track end to catch seamless transitions
                     delay = max(0.8, min(base, remaining - 0.3)) if remaining > 1 else 0.8
                 elif state.device_id:
                     delay = self.POLL_PAUSED
+                    _is_idle_or_paused = True
                 else:
                     delay = self.POLL_IDLE
+                    _is_idle_or_paused = True
             else:
                 delay = self.POLL_IDLE
+                _is_idle_or_paused = True
+
+            if _is_idle_or_paused:
+                self._cancel_polling_if_long_pause_or_idle()
 
             # This is calling a custom task with sleep so it could be canceled on unmount and clear the terminal
             # right away instead of waiting for the sleep timer to run out
@@ -218,6 +232,17 @@ class SpotifyApp(App):
                 return None, retry_after
             # network hiccup—back off a bit
             return None, 2.0
+
+    def _cancel_polling_if_long_pause_or_idle(self):
+        now = datetime.datetime.now()
+
+        if self._first_instance_of_paused_or_idle_playback_poll is None:
+            self._first_instance_of_paused_or_idle_playback_poll = now
+            return
+        else:
+            delta = now - self._first_instance_of_paused_or_idle_playback_poll
+            if delta.seconds >= self.MAX_POLL_IDLE_OR_PAUSED_TIME:
+                self._stop = True
     # endregion
 
 
