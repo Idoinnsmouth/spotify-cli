@@ -12,7 +12,7 @@ from spotify_cli.config import Config
 from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.search import SearchResult, AlbumSearchItem, TracksSearchItems
 from spotify_cli.schemas.track import Track, Actions
-from spotify_cli.utils.caching import cache_path, load_cache, new_cache, save_cache
+from spotify_cli.utils.caching import get_saved_albums_cache_path, SavedAlbumsCache, EntryModel
 
 
 class SearchElementTypes(Enum):
@@ -221,28 +221,28 @@ def get_library_albums_cached(
         sp: Spotify,
         ttl_sec: int = 900,
 ) -> list[AlbumSearchItem]:
-    path = cache_path()
-    cache = load_cache(path) or new_cache()
+    cache = SavedAlbumsCache(get_saved_albums_cache_path())
+    model = cache.load() or cache.default_payload()
 
     now = time.time()
-    if cache.get("updated_ts") and (now - cache.get("updated_ts") < ttl_sec):
+    if model.updated_ts and (now - model.updated_ts < ttl_sec):
         # Cache is fresh by TTL—return as is.
-        return [entry["album"] for entry in cache["entries"]]
+        return [entry.album for entry in model.entries]
 
     # Freshness peek: get the newest 'added_at' from API
     peek = sp.current_user_saved_albums(limit=1, offset=0)
     peek_items = peek.get("items", [])
     newest_added_at = peek_items[0]["added_at"] if peek_items else None
 
-    if newest_added_at and newest_added_at == cache["latest_added_at"]:
+    if newest_added_at and newest_added_at == model.latest_added_at:
         # No change since last seen—refresh TTL and return
-        cache["updated_ts"] = now
-        save_cache(path, cache)
-        return [entry["album"] for entry in cache["entries"]]
+        model.updated_ts = now
+        cache.save(model)
+        return [entry.album for entry in model.entries]
 
     # There are changes or first load: delta-fetch
-    known_ids = set(cache["album_ids"])
-    new_entries: list[dict] = []
+    known_ids = set(model.album_ids)
+    new_entries: list[EntryModel] = []
 
     offset = 0
     while True:
@@ -262,7 +262,11 @@ def get_library_albums_cached(
                 hit_known = True
                 break
 
-            new_entries.append({"added_at": added_at, "album": AlbumSearchItem(**album)})
+            # new_entries.append({"added_at": added_at, "album": AlbumSearchItem(**album)})
+            new_entries.append(EntryModel(
+                album=AlbumSearchItem(**album),
+                added_at=added_at
+            ))
 
         # Stop if we reached previously known territory or the last page
         if hit_known or len(items) < BATCH:
@@ -271,15 +275,15 @@ def get_library_albums_cached(
         offset += BATCH
 
     if new_entries:
-        cache["entries"] = [entry for entry in new_entries] + cache["entries"]
-        cache["album_ids"] = list(set(cache["album_ids"]).union(a["album"].id for a in new_entries))
-        cache["latest_added_at"] = newest_added_at or cache["latest_added_at"]
+        model.entries = [entry for entry in new_entries] + model.entries
+        model.album_ids = list(set(model.album_ids).union(a.album.id for a in new_entries))
+        model.latest_added_at = newest_added_at or model.latest_added_at
 
-    cache["updated_ts"] = now
-    cache["entries"].sort(key=lambda e: e["added_at"], reverse=True)
+    model.updated_ts = now
+    model.entries.sort(key=lambda e: e.added_at, reverse=True)
 
-    save_cache(path, cache)
-    return [entry["album"] for entry in cache["entries"]]
+    cache.save(model)
+    return [entry.album for entry in model.entries]
 
 
 if __name__ == "__main__":

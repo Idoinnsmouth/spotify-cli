@@ -18,7 +18,6 @@ class Config(metaclass=Singleton):
     client_id: str
     client_secret: str
     redirect_uri: str
-    cache_path: str
     scopes: str
 
     def __init__(self):
@@ -33,5 +32,4 @@ class Config(metaclass=Singleton):
         self.client_id = os.getenv("SPOTIPY_CLIENT_ID")
         self.client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
         self.redirect_uri = os.getenv("SPOTIPY_REDIRECT_URI", "http://127.0.0.1:8080/callback")
-        self.cache_path = os.path.join(parent_dir, "..", "..", ".cache")
         self.scopes = "user-modify-playback-state user-read-playback-state app-remote-control streaming user-library-read"
