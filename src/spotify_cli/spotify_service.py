@@ -12,7 +12,7 @@ from spotify_cli.config import Config
 from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.search import SearchResult, AlbumSearchItem, TracksSearchItems
 from spotify_cli.schemas.track import Track, Actions
-from spotify_cli.utils.caching import cache_path, load_cache, new_cache, save_cache
+from spotify_cli.utils.caching import get_saved_albums_cache_path, load_saved_albums_cache, new_saved_albums_cache, save_saved_albums_cache
 
 
 class SearchElementTypes(Enum):
@@ -221,8 +221,8 @@ def get_library_albums_cached(
         sp: Spotify,
         ttl_sec: int = 900,
 ) -> list[AlbumSearchItem]:
-    path = cache_path()
-    cache = load_cache(path) or new_cache()
+    path = get_saved_albums_cache_path()
+    cache = load_saved_albums_cache(path) or new_saved_albums_cache()
 
     now = time.time()
     if cache.get("updated_ts") and (now - cache.get("updated_ts") < ttl_sec):
@@ -237,7 +237,7 @@ def get_library_albums_cached(
     if newest_added_at and newest_added_at == cache["latest_added_at"]:
         # No change since last seen—refresh TTL and return
         cache["updated_ts"] = now
-        save_cache(path, cache)
+        save_saved_albums_cache(path, cache)
         return [entry["album"] for entry in cache["entries"]]
 
     # There are changes or first load: delta-fetch
@@ -278,7 +278,7 @@ def get_library_albums_cached(
     cache["updated_ts"] = now
     cache["entries"].sort(key=lambda e: e["added_at"], reverse=True)
 
-    save_cache(path, cache)
+    save_saved_albums_cache(path, cache)
     return [entry["album"] for entry in cache["entries"]]
 
 
