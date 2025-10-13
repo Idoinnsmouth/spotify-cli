@@ -2,9 +2,8 @@ import json
 import os
 import tempfile
 from abc import ABC, abstractmethod
-from copy import deepcopy
 from pathlib import Path
-from typing import TypedDict, TypeVar, Generic
+from typing import TypeVar, Generic
 
 from platformdirs import user_cache_dir
 from pydantic import BaseModel
@@ -97,7 +96,7 @@ class SavedAlbumsCache(JsonCacheBase[SavedAlbumsModel]):
     def default_payload(self) -> SavedAlbumsModel:
         return SavedAlbumsModel()
 
-    def from_json(self, data: dict) -> T:
+    def from_json(self, data: dict) -> SavedAlbumsModel:
         return SavedAlbumsModel.model_validate(data)
 
     def to_json(self, payload: SavedAlbumsModel) -> dict:
@@ -114,11 +113,12 @@ class SavedAlbumsCache(JsonCacheBase[SavedAlbumsModel]):
 
         return data
 
+
 def get_saved_albums_cache_path() -> Path:
     return Path(user_cache_dir("spotify-cli")) / "saved_albums.json"
 
 
-class SpotipyCache(TypedDict):
+class SpotipyTokenModel(BaseModel):
     access_token: str
     token_type: str
     expires_in: int
@@ -126,7 +126,5 @@ class SpotipyCache(TypedDict):
     expires_at: int
     refresh_token: str
 
-
-def get_saved_albums_cache_path() -> Path:
-    return CACHE_DIR / "saved_albums.json"
-
+def get_spotipy_cache_path():
+    return Path(user_cache_dir("spotify-cli")) / "spotipy_token.json"
