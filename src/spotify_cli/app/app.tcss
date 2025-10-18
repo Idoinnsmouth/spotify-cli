@@ -1,3 +1,17 @@
+.header {
+        text-style: bold;
+        color: $primary;
+}
+
+.invisible {
+    display: none;
+}
+
+#cred_error {
+    color: red;
+    align: center middle;
+}
+
 #main {
     layout: grid;
     grid-size: 1 2;
