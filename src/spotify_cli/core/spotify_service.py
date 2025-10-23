@@ -271,7 +271,6 @@ def get_library_albums_cached(
                 hit_known = True
                 break
 
-            # new_entries.append({"added_at": added_at, "album": AlbumSearchItem(**album)})
             new_entries.append(EntryModel(
                 album=AlbumSearchItem(**album),
                 added_at=added_at
@@ -296,7 +295,8 @@ def get_library_albums_cached(
 #endregion
 
 if __name__ == "__main__":
-    test_spotify_config(
-        client_id="test",
-        client_secret="test"
-    )
+    pass
+    # test_spotify_config(
+    #     client_id="test",
+    #     client_secret="test"
+    # )
