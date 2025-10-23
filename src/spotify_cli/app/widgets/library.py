@@ -6,7 +6,7 @@ from textual.widget import Widget
 from textual.widgets import DataTable
 
 from spotify_cli.schemas.search import AlbumSearchItem
-from spotify_cli.spotify_service import play_by_uris_or_context_uri
+from spotify_cli.core.spotify_service import play_by_uris_or_context_uri
 
 
 class Library(Widget):

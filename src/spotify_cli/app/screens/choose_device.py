@@ -1,5 +1,3 @@
-from typing import Callable
-
 from spotipy import Spotify
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -7,7 +5,7 @@ from textual.screen import Screen
 from textual.widgets import RadioSet, RadioButton, Footer, Static
 
 from spotify_cli.schemas.device import Device
-from spotify_cli.spotify_service import get_devices
+from spotify_cli.core.spotify_service import get_devices
 
 
 class ChooseDevice(Screen):

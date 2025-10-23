@@ -17,13 +17,13 @@ from spotify_cli.app.screens.choose_device import ChooseDevice
 from spotify_cli.app.widgets.library import Library
 from spotify_cli.app.screens.search import SearchScreen
 from spotify_cli.app.widgets.track_details import TrackDetail
-from spotify_cli.auth import get_spotify_client
-from spotify_cli.config import Config
+from spotify_cli.core.auth import get_spotify_client
+from spotify_cli.core.config import Config
 from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.playback import PlaybackState
 from spotify_cli.schemas.search import TracksSearchItems
 from spotify_cli.schemas.track import Track
-from spotify_cli.spotify_service import play_or_pause_track, get_first_active_device, \
+from spotify_cli.core.spotify_service import play_or_pause_track, get_first_active_device, \
     get_current_playing_track, get_library_albums_cached
 
 

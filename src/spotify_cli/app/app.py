@@ -1,10 +1,9 @@
 from textual import on
 from textual.app import App
 from spotify_cli.app.screens.main import Main, ScreenChange
-from spotify_cli.app.screens.search import SearchScreen
 from spotify_cli.app.screens.setup_env import SetupEnv
-from spotify_cli.auth import get_spotify_client
-from spotify_cli.config import Config, ConfigValuesError
+from spotify_cli.core.auth import get_spotify_client
+from spotify_cli.core.config import Config, ConfigValuesError
 
 
 class SpotifyApp(App):

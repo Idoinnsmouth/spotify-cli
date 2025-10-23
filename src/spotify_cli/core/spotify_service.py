@@ -1,18 +1,15 @@
-import asyncio
 import subprocess
-import threading
 import time
 from enum import Enum
-from queue import Queue
 
 from spotipy import Spotify, SpotifyOauthError
 
-from spotify_cli.auth import get_spotify_client
-from spotify_cli.config import Config
+from spotify_cli.core.auth import get_spotify_client
+from spotify_cli.core.config import Config
 from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.search import SearchResult, AlbumSearchItem, TracksSearchItems
 from spotify_cli.schemas.track import Track, Actions
-from spotify_cli.utils.caching import get_saved_albums_cache_path, SavedAlbumsCache, EntryModel
+from spotify_cli.core.caching import get_saved_albums_cache_path, SavedAlbumsCache, EntryModel
 
 
 class SearchElementTypes(Enum):

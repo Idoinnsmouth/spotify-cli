@@ -1,7 +1,7 @@
 from spotipy import SpotifyOAuth, Spotify, CacheFileHandler
 
-from spotify_cli.config import Config
-from spotify_cli.utils.caching import get_spotipy_cache_path
+from spotify_cli.core.config import Config
+from spotify_cli.core.caching import get_spotipy_cache_path
 
 
 def get_spotify_client(cfg: Config) -> Spotify:

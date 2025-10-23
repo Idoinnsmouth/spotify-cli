@@ -3,8 +3,8 @@ from textual.containers import Container, Vertical
 from textual.screen import Screen
 from textual.widgets import Footer, Input, Static, Label, Link, Button
 
-from spotify_cli.config import save_config
-from spotify_cli.spotify_service import is_spotify_config_valid
+from spotify_cli.core.config import save_config
+from spotify_cli.core.spotify_service import is_spotify_config_valid
 
 
 class SetupEnv(Screen):

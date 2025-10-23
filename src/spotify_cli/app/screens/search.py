@@ -1,7 +1,5 @@
 import asyncio
 from functools import lru_cache
-from operator import attrgetter
-from time import sleep
 
 from spotipy import Spotify
 from textual import on
@@ -12,9 +10,9 @@ from textual.suggester import Suggester
 from textual.widgets import Input, Label, RadioSet, RadioButton, Footer
 
 from spotify_cli.schemas.search import TracksSearchItems, SearchResult
-from spotify_cli.spotify_service import search_artist_and_play, search_track_and_play, search_album_and_play, \
-    search_spotify_tracks, SearchElementTypes, \
-    get_current_playing_track, search_spotify_suggestions
+from spotify_cli.core.spotify_service import search_artist_and_play, search_track_and_play, search_album_and_play, \
+    SearchElementTypes, \
+    search_spotify_suggestions
 
 
 class SearchScreen(Screen):
