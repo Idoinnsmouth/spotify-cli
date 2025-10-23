@@ -63,6 +63,8 @@ class TrackDetail(Widget):
             return
 
         album_image = track.album.get_album_image()
+        if album_image is None:
+            return
 
         # todo - maybe do the size dynmicly to the terminal size
         img = get_image_from_url(

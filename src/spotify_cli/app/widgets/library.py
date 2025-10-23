@@ -47,12 +47,11 @@ class Library(Widget):
 
     @work(thread=True, exclusive=True, group="io-albums")
     def _load_albums_worker(self):
-        albums = get_library_albums_cached(sp=self.sp)
         try:
+            albums = get_library_albums_cached(sp=self.sp)
             self.post_message(AlbumsLoaded(albums))
-        except Exception as e:
-            log.exception("Failed loading albums")
-            self.post_message(AlbumsFailed(str(e)))
+        except Exception:
+            self.post_message(AlbumsFailed("Failed loading albums, try again later"))
 
     @on(AlbumsLoaded)
     def _handle_albums_loaded(self, message: AlbumsLoaded):
