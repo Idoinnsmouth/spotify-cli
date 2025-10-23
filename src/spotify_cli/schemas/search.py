@@ -43,7 +43,7 @@ class AlbumSearchItem(BaseModel):
 
     def get_album_image(self) -> SpotifyImage:
         # last image is the smallest (normally 64x64)
-        return self.images[-1]
+        return self.images[-1] if self.images else None
 
     def get_albums_artists(self) -> str:
         return ", ".join([artist.name for artist in self.artists])
