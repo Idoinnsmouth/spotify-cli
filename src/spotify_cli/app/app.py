@@ -21,15 +21,6 @@ class SpotifyApp(App):
         self._debug_mode = True
         self._load_config()
 
-    def _load_config(self):
-        try:
-            config = Config()
-            config.load_config()
-            self.sp = get_spotify_client(config)
-            self.show_config_setup = False
-        except ConfigValuesError:
-            self.show_config_setup = True
-
     def on_mount(self) -> None:
         self.theme = "tokyo-night"
 
@@ -41,6 +32,15 @@ class SpotifyApp(App):
             self.push_screen(SetupEnv(), _handle_setup_env_callback)
         else:
             self.push_screen(Main())
+
+    def _load_config(self):
+        try:
+            config = Config()
+            config.load_config()
+            self.sp = get_spotify_client(config)
+            self.show_config_setup = False
+        except ConfigValuesError:
+            self.show_config_setup = True
 
     def action_quit(self):
         self.exit()

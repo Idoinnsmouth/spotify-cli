@@ -7,13 +7,15 @@ from spotipy import Spotify, SpotifyException
 from textual import work
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical
+from textual.css.query import NoMatches
 from textual.message import Message
 from textual.reactive import reactive
 from textual.screen import Screen
 from textual.widget import Widget
-from textual.widgets import Footer, Pretty
+from textual.widgets import Footer, Pretty, LoadingIndicator
 
 from spotify_cli.app.screens.choose_device import ChooseDevice
+from spotify_cli.app.widgets.active_device import ActiveDevice
 from spotify_cli.app.widgets.library import Library
 from spotify_cli.app.screens.search import SearchScreen
 from spotify_cli.app.widgets.track_details import TrackDetail
@@ -56,11 +58,11 @@ class Main(Screen):
     _debug_message = reactive([])
     _cancelable_sleep = None
     _first_instance_of_paused_or_idle_playback_poll: Optional[datetime] = None
+    _loading = False
 
     def __init__(self):
         super().__init__()
-        # todo - change this before release (:
-        self._debug_mode = True
+        self._debug_mode = False
         self.sp = get_spotify_client(Config())
         self.active_device = get_first_active_device(sp=self.sp)
         self.cur_track = get_current_playing_track(sp=self.sp)
@@ -70,8 +72,6 @@ class Main(Screen):
 
     def on_mount(self) -> None:
         self.run_worker(self._poll_loop, thread=True, exclusive=True, group="pollers")
-        # todo - get albums via another thread and add loading to library
-        self.query_one(Library).albums = get_library_albums_cached(sp=self.sp)
 
     async def on_unmount(self) -> None:
         self._stop = True
@@ -248,15 +248,4 @@ class Main(Screen):
     # endregion
 
 
-class ActiveDevice(Widget):
-    active_device_name: reactive[str | None] = reactive(default=None)
 
-    def __init__(self, active_device_name: str | None):
-        super().__init__()
-        self.active_device_name = active_device_name
-
-    def render(self) -> str:
-        if self.active_device_name:
-            return f"Active Device: {self.active_device_name}"
-        else:
-            return "No Active device"
