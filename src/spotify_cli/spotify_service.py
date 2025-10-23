@@ -5,7 +5,7 @@ import time
 from enum import Enum
 from queue import Queue
 
-from spotipy import Spotify
+from spotipy import Spotify, SpotifyOauthError
 
 from spotify_cli.auth import get_spotify_client
 from spotify_cli.config import Config
@@ -42,6 +42,18 @@ class NoActiveDeviceFound(Exception):
 
 
 # region #### Check Spotify client ####
+def is_spotify_config_valid(client_id: str, client_secret: str) -> bool:
+    config = Config()
+    config.client_id = client_id
+    config.client_secret = client_secret
+    sp = get_spotify_client(config)
+    try:
+        sp.devices()
+    except SpotifyOauthError:
+        return False
+
+    return True
+
 
 def ensure_spotify_running():
     # todo - this runs spotify on current machine only
@@ -216,7 +228,7 @@ def get_current_playing_track(sp: Spotify) -> Track | None:
 
 # endregion
 
-#### Library ####
+#region #### Library ####
 def get_library_albums_cached(
         sp: Spotify,
         ttl_sec: int = 900,
@@ -284,12 +296,10 @@ def get_library_albums_cached(
 
     cache.save(model)
     return [entry.album for entry in model.entries]
-
+#endregion
 
 if __name__ == "__main__":
-    _cfg = Config()
-    _sp = get_spotify_client(_cfg)
-    _res = get_library_albums_cached(sp=_sp)
-
-    # play_or_pause_track(sp=_sp, active_device=_devices[0])
-    print("hello")
+    test_spotify_config(
+        client_id="test",
+        client_secret="test"
+    )
