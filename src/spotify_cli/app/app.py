@@ -1,6 +1,8 @@
+from textual import on
 from textual.app import App
-from spotify_cli.app.components.main import Main
-from spotify_cli.app.components.setup_env import SetupEnv
+from spotify_cli.app.screens.main import Main, ScreenChange
+from spotify_cli.app.screens.search import SearchScreen
+from spotify_cli.app.screens.setup_env import SetupEnv
 from spotify_cli.auth import get_spotify_client
 from spotify_cli.config import Config, ConfigValuesError
 
@@ -43,3 +45,12 @@ class SpotifyApp(App):
 
     def action_quit(self):
         self.exit()
+
+    @on(ScreenChange)
+    def handle_screen_change(self, message: ScreenChange):
+        self.push_screen(
+            message.screen(
+                **message.params,
+            ),
+            message.callback
+        )

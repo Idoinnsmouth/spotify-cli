@@ -1,25 +1,22 @@
 import asyncio
 import datetime
-import time
-from time import sleep
-from typing import Optional
+from typing import Optional, Any, Callable
 
 from pydantic import ValidationError
 from spotipy import Spotify, SpotifyException
-from textual import on, log, work
-from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual import work
+from textual.app import ComposeResult
+from textual.containers import Container, Vertical
 from textual.message import Message
 from textual.reactive import reactive
 from textual.screen import Screen
-from textual.suggester import Suggester
-from textual.widget import Widget, AwaitMount
-from textual.widgets import Header, Footer, Input, Pretty, Placeholder, Static, DataTable
+from textual.widget import Widget
+from textual.widgets import Footer, Pretty
 
-from spotify_cli.app.components.choose_device import ChooseDevice
-from spotify_cli.app.components.library import Library
-from spotify_cli.app.components.search import SearchScreen
-from spotify_cli.app.components.track_details import TrackDetail
+from spotify_cli.app.screens.choose_device import ChooseDevice
+from spotify_cli.app.widgets.library import Library
+from spotify_cli.app.screens.search import SearchScreen
+from spotify_cli.app.widgets.track_details import TrackDetail
 from spotify_cli.auth import get_spotify_client
 from spotify_cli.config import Config
 from spotify_cli.schemas.device import Device
@@ -28,6 +25,14 @@ from spotify_cli.schemas.search import TracksSearchItems
 from spotify_cli.schemas.track import Track
 from spotify_cli.spotify_service import play_or_pause_track, get_first_active_device, \
     get_current_playing_track, get_library_albums_cached
+
+
+class ScreenChange(Message):
+    def __init__(self, screen: type[Screen], params: dict[str, Any], callback: Optional[Callable]):
+        self.screen = screen
+        self.params = params
+        self.callback = callback
+        super().__init__()
 
 
 class Main(Screen):
@@ -64,7 +69,6 @@ class Main(Screen):
         self._stop = False
 
     def on_mount(self) -> None:
-        self.theme = "tokyo-night"
         self.run_worker(self._poll_loop, thread=True, exclusive=True, group="pollers")
         # todo - get albums via another thread and add loading to library
         self.query_one(Library).albums = get_library_albums_cached(sp=self.sp)
@@ -96,12 +100,15 @@ class Main(Screen):
         play_or_pause_track(sp=self.sp, active_device=self.active_device)
 
     def action_show_search(self):
-        self.push_screen(
-            SearchScreen(
-                sp=self.sp,
-                print_error_text_to_gutter=self.print_error_text_to_gutter,
-            ),
-            self._after_search
+        self.post_message(
+            ScreenChange(
+                SearchScreen,
+                {
+                    "sp": self.sp,
+                    "print_error_text_to_gutter": self.print_error_text_to_gutter
+                },
+                self._after_search
+            )
         )
 
     def _after_search(self, track: TracksSearchItems):
@@ -129,9 +136,12 @@ class Main(Screen):
         self.update_track(_track)
 
     def action_show_change_device_screen(self):
-        self.push_screen(
-            ChooseDevice(sp=self.sp, active_device=self.active_device),
-            self.check_choose_device
+        self.post_message(
+            ScreenChange(
+                ChooseDevice,
+                {"sp": self.sp, "active_device": self.active_device},
+                self.check_choose_device
+            )
         )
 
     def check_choose_device(self, device: Device | None):
