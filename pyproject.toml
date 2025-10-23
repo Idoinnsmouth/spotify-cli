@@ -1,26 +1,23 @@
-[build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "spotify-cli"
 version = "0.1.0"
-description = "Terminal Spotify control (search + play)"
-#readme = "README.md"
+description = "A simple tui client for spotify"
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "spotipy>=2.24",
-  "click>=8.1",
-  "textual==6.1.0",
-  "textual-dev==1.7.0",
+  "textual==6.4.0",
   "python-dotenv>=1.0",
-  "pydantic==2.11.9",
+  "pydantic==2.12.3",
   "rich-pixels==3.0.1"
 ]
 
 [project.scripts]
-spotify = "spotify_cli.cli:main"
+spotify = "spotify_cli.entry_points:spotify_tui"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["spotify_cli"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["spotify_cli*"]

@@ -13,11 +13,11 @@ from spotify_cli.utils.pixelate_images import get_image_from_url
 class TrackDetail(Widget):
     track: reactive[Track] = reactive(None, recompose=True)
     album_image: reactive[str] = reactive(None, recompose=True)
+    pixel_view = Static()
 
     def __init__(self, *children: Widget, track: Track | None = None):
         super().__init__(*children)
         self.track = track
-        self.pixel_view = Static()
 
     def compose(self):
         if not self.track:
