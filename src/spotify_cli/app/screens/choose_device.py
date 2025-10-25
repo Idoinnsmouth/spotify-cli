@@ -31,7 +31,6 @@ class ChooseDevice(Screen):
                         label=device.name,
                         id=f"device-{device.id}",
                         value=(self.active_device.id == device.id if self.active_device else device.is_active),
-
                     )
         else:
             yield Static("No available devices")
