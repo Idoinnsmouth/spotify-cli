@@ -53,13 +53,13 @@ def generate_artist_search_item() -> ArtistSearchItem:
     return artist_search_item
 
 
-def generate_test_device() -> Device:
+def generate_test_device(name: str = "device", is_active: bool = False) -> Device:
     device = Device(
-        id="device123",
-        is_active=True,
+        id=f"device{uuid.uuid4()}",
+        is_active=is_active,
         is_private_session=True,
         is_restricted=False,
-        name="test device",
+        name=name,
         type="device",
         volume_percent=100,
         supports_volume=True,
