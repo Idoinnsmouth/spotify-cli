@@ -7,26 +7,20 @@ from spotipy import Spotify, SpotifyException
 from textual import work
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical
-from textual.css.query import NoMatches
 from textual.message import Message
 from textual.reactive import reactive
 from textual.screen import Screen
-from textual.widget import Widget
-from textual.widgets import Footer, Pretty, LoadingIndicator
+from textual.widgets import Footer, Pretty
 
 from spotify_cli.app.screens.choose_device import ChooseDevice
 from spotify_cli.app.widgets.active_device import ActiveDevice
 from spotify_cli.app.widgets.library import Library
 from spotify_cli.app.screens.search import SearchScreen
 from spotify_cli.app.widgets.track_details import TrackDetail
-from spotify_cli.core.auth import get_spotify_client
-from spotify_cli.core.config import Config
 from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.playback import PlaybackState
 from spotify_cli.schemas.search import TracksSearchItems
 from spotify_cli.schemas.track import Track
-from spotify_cli.core.spotify_service import play_or_pause_track, get_first_active_device, \
-    get_current_playing_track, get_library_albums_cached
 
 
 class ScreenChange(Message):
@@ -51,7 +45,6 @@ class Main(Screen):
     POLL_IDLE = 25.0
     MAX_POLL_IDLE_OR_PAUSED_TIME = 3600
 
-    sp: Spotify
     active_device: reactive[Device | None] = reactive(default=None)
     cur_track: Track | None
     _debug_mode = False
@@ -63,12 +56,13 @@ class Main(Screen):
     def __init__(self):
         super().__init__()
         self._debug_mode = False
-        self.sp = get_spotify_client(Config())
-        self.active_device = get_first_active_device(sp=self.sp)
-        self.cur_track = get_current_playing_track(sp=self.sp)
         self._poll_interval = self.POLL_IDLE
         self._last: PlaybackState | None = None
         self._stop = False
+
+        self.active_device = self.app.service.get_first_active_device()
+        playback_state = self.app.service.get_playback_state()
+        self.cur_track = playback_state.track if playback_state else playback_state
 
     def on_mount(self) -> None:
         self.run_worker(self._poll_loop, thread=True, exclusive=True, group="pollers")
@@ -83,7 +77,7 @@ class Main(Screen):
         with Container(id="main"):
             with Vertical(id="track_details"):
                 yield TrackDetail(track=self.cur_track)
-                yield Library(sp=self.sp)
+                yield Library()
 
             with Container(id="devices"):
                 yield ActiveDevice(active_device_name=self.active_device.name if self.active_device else None)
@@ -97,14 +91,14 @@ class Main(Screen):
 
     # region #### Actions ####
     def action_pause_start_playback(self):
-        play_or_pause_track(sp=self.sp, active_device=self.active_device)
+        self.app.service.play_or_pause_track(active_device=self.active_device)
 
     def action_show_search(self):
         self.post_message(
             ScreenChange(
                 SearchScreen,
                 {
-                    "sp": self.sp,
+                    "sp": self.app.service,
                     "print_error_text_to_gutter": self.print_error_text_to_gutter
                 },
                 self._after_search
@@ -139,7 +133,7 @@ class Main(Screen):
         self.post_message(
             ScreenChange(
                 ChooseDevice,
-                {"sp": self.sp, "active_device": self.active_device},
+                {"sp": self.app.service, "active_device": self.active_device},
                 self.check_choose_device
             )
         )
@@ -163,7 +157,7 @@ class Main(Screen):
 
         self.active_device = device
         self.query_one(ActiveDevice).active_device_name = device.name
-        play_or_pause_track(sp=self.sp, active_device=device)
+        self.app.service.play_or_pause_track(active_device=device)
 
     def print_error_text_to_gutter(self, errors: list[str]):
         if self._debug_mode:
@@ -226,8 +220,7 @@ class Main(Screen):
             return None
 
         try:
-            payload = self.sp.current_playback()
-            return PlaybackState.to_state(payload), None
+            return self.app.service.get_playback_state(), None
         except Exception as e:
             retry_after = _safe_get_retry_after(e)
             if retry_after is not None:
@@ -246,6 +239,3 @@ class Main(Screen):
             if delta.seconds >= self.MAX_POLL_IDLE_OR_PAUSED_TIME:
                 self._stop = True
     # endregion
-
-
-

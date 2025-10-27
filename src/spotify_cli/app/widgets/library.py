@@ -1,16 +1,12 @@
-from logging import exception
-
 from textual import work, log, on
 from textual.containers import Container
 
 from spotipy import Spotify
 from textual.message import Message
-from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import DataTable, LoadingIndicator, Static
 
 from spotify_cli.schemas.search import AlbumSearchItem
-from spotify_cli.core.spotify_service import play_by_uris_or_context_uri, get_library_albums_cached
 
 
 class AlbumsLoaded(Message):
@@ -28,9 +24,8 @@ class AlbumsFailed(Message):
 class Library(Widget):
     TABLE_COL = ("artist", "album")
 
-    def __init__(self, sp: Spotify):
+    def __init__(self):
         super().__init__()
-        self.sp = sp
 
     def compose(self):
         with Container(id="album_table"):
@@ -42,12 +37,12 @@ class Library(Widget):
         self.query_one(DataTable).cursor_type = "row"
         self._load_albums_worker()
 
-    def on_data_table_row_selected(self, event: DataTable.RowSelected):
-        play_by_uris_or_context_uri(sp=self.sp, context_uri=event.row_key.value)
+    async def on_data_table_row_selected(self, event: DataTable.RowSelected):
+        await self.app.service.play_by_uris_or_context_uri(context_uri=event.row_key.value)
 
     @work(thread=True, exclusive=True, group="io-albums")
     def _load_albums_worker(self):
-        albums = get_library_albums_cached(sp=self.sp)
+        albums = self.app.service.get_library_albums_cached()
         try:
             self.post_message(AlbumsLoaded(albums))
         except Exception as e:

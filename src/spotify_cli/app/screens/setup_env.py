@@ -3,8 +3,8 @@ from textual.containers import Container, Vertical
 from textual.screen import Screen
 from textual.widgets import Footer, Input, Static, Label, Link, Button
 
-from spotify_cli.core.config import save_config
-from spotify_cli.core.spotify_service import is_spotify_config_valid
+from spotify_cli.core.config import save_config, Config
+from spotify_cli.core.spotify import SpotifyClient
 
 
 class SetupEnv(Screen):
@@ -43,8 +43,7 @@ class SetupEnv(Screen):
     @on(Button.Pressed)
     def submit(self, _event: Button.Pressed) -> None:
         self.client_creds_error.classes = "invisible"
-
-        is_valid = is_spotify_config_valid(
+        is_valid = SpotifyClient.is_spotify_config_valid(
             client_id=self.client_id.value,
             client_secret=self.client_secret.value,
         )
@@ -54,6 +53,9 @@ class SetupEnv(Screen):
                 self.client_id.value,
                 client_secret=self.client_secret.value,
             )
-            self.dismiss({"status": "ok"})
+            self.dismiss(Config(
+                client_id=self.client_id.value,
+                client_secret=self.client_secret.value,
+            ))
         else:
             self.client_creds_error.classes = ""

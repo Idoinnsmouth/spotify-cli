@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -24,6 +25,13 @@ class Config(metaclass=Singleton):
     client_secret: str = None
     redirect_uri: str = "http://127.0.0.1:8080/callback"
     scopes: str = "user-modify-playback-state user-read-playback-state app-remote-control streaming user-library-read"
+
+    def __init__(self, client_id: Optional[str] = None, client_secret: Optional[str] = None):
+        if client_id and client_secret:
+            self.client_id = client_id
+            self.client_secret = client_secret
+        else:
+            self.load_config()
 
     def load_config(self):
         load_dotenv(get_env_path())

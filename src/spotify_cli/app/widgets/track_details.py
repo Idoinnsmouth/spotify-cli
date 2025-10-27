@@ -1,9 +1,6 @@
-from math import floor
-
-from rich.text import Text
-from textual.containers import Container, Horizontal, Grid, Vertical
+from textual.containers import Container, Vertical
 from textual.reactive import reactive
-from textual.widget import Widget, AwaitMount
+from textual.widget import Widget
 from textual.widgets import Static
 
 from spotify_cli.schemas.track import Track

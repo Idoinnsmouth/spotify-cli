@@ -1,7 +1,6 @@
 import asyncio
 from functools import lru_cache
 
-from spotipy import Spotify
 from textual import on
 from textual.binding import Binding
 from textual.reactive import reactive
@@ -9,10 +8,8 @@ from textual.screen import Screen
 from textual.suggester import Suggester
 from textual.widgets import Input, Label, RadioSet, RadioButton, Footer
 
+from spotify_cli.core.spotify import SearchElementTypes, SpotifyClient
 from spotify_cli.schemas.search import TracksSearchItems, SearchResult
-from spotify_cli.core.spotify_service import search_artist_and_play, search_track_and_play, search_album_and_play, \
-    SearchElementTypes, \
-    search_spotify_suggestions
 
 
 class SearchScreen(Screen):
@@ -23,14 +20,13 @@ class SearchScreen(Screen):
         Binding("escape", "pop_screen", "Close"),
     ]
 
-    sp: Spotify
+    sp: SpotifyClient
     print_error_text_to_gutter: callable
     mode = reactive("artist")
 
-    def __init__(self, sp: Spotify, print_error_text_to_gutter: callable):
+    def __init__(self, print_error_text_to_gutter: callable):
         super().__init__()
         self.input: Input | None = None
-        self.sp = sp
         self.print_error_text_to_gutter = print_error_text_to_gutter
 
     def compose(self):
@@ -62,14 +58,13 @@ class SearchScreen(Screen):
 
         try:
             if self.mode == "artist":
-                track = search_artist_and_play(
-                    sp=self.sp,
+                track = self.app.service.search_artist_and_play(
                     artist_query=event.value
                 )
             elif self.mode == "track":
-                track = search_track_and_play(sp=self.sp, song_query=event.value)
+                track = self.app.service.search_track_and_play(song_query=event.value)
             elif self.mode == "album":
-                track = search_album_and_play(sp=self.sp, album_query=event.value)
+                track = self.app.service.search_album_and_play(album_query=event.value)
         except Exception as e:
             self.print_error_text_to_gutter([str(e)])
 
@@ -113,13 +108,13 @@ class SearchScreen(Screen):
 
 
 class SearchSuggester(Suggester):
-    sp: Spotify
+    sp: SpotifyClient
     search_element_type: SearchElementTypes
     delay: float
     _call_id: int
     _last_value: str | None
 
-    def __init__(self, sp: Spotify, search_element_type: SearchElementTypes, delay: float = 0.30,
+    def __init__(self, sp: SpotifyClient, search_element_type: SearchElementTypes, delay: float = 0.30,
                  use_cache: bool = False):
         super().__init__(use_cache=use_cache)
         self.sp = sp
@@ -167,7 +162,7 @@ class SearchSuggester(Suggester):
 
     @staticmethod
     @lru_cache(maxsize=256)
-    def _search_spotify_cached(v: str, element_type: SearchElementTypes, sp: Spotify) -> SearchResult | None:
+    def _search_spotify_cached(v: str, element_type: SearchElementTypes, sp: SpotifyClient) -> SearchResult | None:
         # in results album have no popularity so there is no way to get the top result as in spotify app
         search_limit = 1 if element_type is SearchElementTypes.ALBUM else 10
-        return search_spotify_suggestions(sp=sp, query=v, search_element=element_type, limit=search_limit)
+        return sp.search_spotify_suggestions(query=v, search_element=element_type, limit=search_limit)
