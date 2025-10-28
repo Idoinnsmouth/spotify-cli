@@ -10,9 +10,6 @@ from pydantic import BaseModel
 
 from spotify_cli.schemas.search import AlbumSearchItem
 
-CACHE_DIR = Path.home() / ".spotify_cli_cache"
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
 T = TypeVar("T")
 
 
@@ -125,6 +122,7 @@ class SpotipyTokenModel(BaseModel):
     scope: str
     expires_at: int
     refresh_token: str
+
 
 def get_spotipy_cache_path():
     return Path(user_cache_dir("spotify-cli")) / "spotipy_token.json"

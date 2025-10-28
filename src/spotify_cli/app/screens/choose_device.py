@@ -5,7 +5,6 @@ from textual.screen import Screen
 from textual.widgets import RadioSet, RadioButton, Footer, Static
 
 from spotify_cli.schemas.device import Device
-from spotify_cli.core.spotify_service import get_devices
 
 
 class ChooseDevice(Screen):
@@ -13,16 +12,14 @@ class ChooseDevice(Screen):
         Binding("escape", "pop_screen", "Close"),
     ]
 
-    sp: Spotify
     devices: list[Device]
 
-    def __init__(self, sp: Spotify, active_device: Device | None):
+    def __init__(self, active_device: Device | None):
         super().__init__()
-        self.sp = sp
         self.active_device = active_device
 
     def compose(self) -> ComposeResult:
-        self.devices = get_devices(sp=self.sp)
+        self.devices = self.app.service.get_devices()
 
         if len(self.devices) > 0:
             with RadioSet(id="devices"):

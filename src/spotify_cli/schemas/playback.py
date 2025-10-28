@@ -1,11 +1,9 @@
 from typing import Optional
 
 from pydantic import BaseModel
-from textual.message import Message
-
 from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.search import AlbumSearchItem
-from spotify_cli.schemas.track import Track
+from spotify_cli.schemas.track import Track, Actions
 
 
 class PlaybackState(BaseModel):
@@ -14,6 +12,7 @@ class PlaybackState(BaseModel):
     duration_ms: Optional[int]
     is_playing: bool
     device_id: Optional[str]
+    actions: Optional['Actions'] = None
     etag: Optional[str] = None
 
 
