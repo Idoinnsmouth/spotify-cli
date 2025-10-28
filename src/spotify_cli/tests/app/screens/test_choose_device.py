@@ -1,24 +1,22 @@
 import pytest
-import spotipy
-from spotipy import Spotify
 from textual.app import App, ComposeResult
-from textual.widgets import Static, RadioSet, RadioButton
+from textual.widgets import Static, RadioButton
 
 from spotify_cli.app.screens.choose_device import ChooseDevice
+from spotify_cli.core.spotify import SpotifyClient
 from spotify_cli.schemas.device import Device
 from spotify_cli.tests.utils import MockSpotify, generate_test_device
-
-spotipy.Spotify = MockSpotify
-
 
 class ChooseDeviceApp(App):
     def __init__(self, device: Device = None):
         super().__init__()
+        self.service = SpotifyClient(
+            sp=MockSpotify,
+        )
         self.device = device
 
     def compose(self) -> ComposeResult:
         yield ChooseDevice(
-            sp=Spotify(),
             active_device=self.device
         )
 
@@ -27,8 +25,9 @@ class TestChooseDevice:
     @pytest.mark.asyncio
     async def test_no_devices(self, monkeypatch):
         monkeypatch.setattr(
-            "spotify_cli.app.screens.choose_device.get_devices",
-            lambda sp: [],
+            SpotifyClient,
+            "get_devices",
+            lambda _: [],
         )
 
         app = ChooseDeviceApp()
@@ -41,8 +40,9 @@ class TestChooseDevice:
     async def test_list_devices_and_no_active(self, monkeypatch):
         devices = [generate_test_device(name="device1"), generate_test_device(name="device2")]
         monkeypatch.setattr(
-            "spotify_cli.app.screens.choose_device.get_devices",
-            lambda sp: devices
+            SpotifyClient,
+            "get_devices",
+            lambda _: devices,
         )
 
         app = ChooseDeviceApp()
@@ -63,8 +63,9 @@ class TestChooseDevice:
     async def test_shows_active_device(self, monkeypatch):
         devices = [generate_test_device(name="device1"), generate_test_device(name="device2")]
         monkeypatch.setattr(
-            "spotify_cli.app.screens.choose_device.get_devices",
-            lambda sp: devices
+            SpotifyClient,
+            "get_devices",
+            lambda _: devices,
         )
 
         app = ChooseDeviceApp(device=devices[0])

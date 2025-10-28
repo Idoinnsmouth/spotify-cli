@@ -1,45 +1,54 @@
+import threading
 from time import sleep
+from unittest.mock import AsyncMock
 
 import pytest
-import spotipy
-from spotipy import Spotify
 from textual.app import App, ComposeResult
 from textual.widgets import LoadingIndicator, DataTable, Static
 
 from spotify_cli.app.widgets.library import Library
-from spotify_cli.core import spotify_service
-from spotify_cli.tests.utils import MockSpotify, generate_test_album_search_item
-
-spotipy.Spotify = MockSpotify
+from spotify_cli.core.spotify import SpotifyClient
+from spotify_cli.tests.utils import generate_test_album_search_item, MockSpotify
 
 
 class LibraryApp(App):
+    service = SpotifyClient(sp=MockSpotify())
+
     def compose(self) -> ComposeResult:
-        yield Library(
-            sp=Spotify()
-        )
+        yield Library()
 
 
 class TestLibrary:
     @pytest.mark.asyncio
     async def test_shows_loading_while_getting_albums(self, monkeypatch):
-        monkeypatch.setattr(spotify_service, "get_library_albums_cached", lambda: sleep(20))
+        gate = threading.Event()
+
+        def fake_get_albums(_):
+            gate.wait() #block the worker thread until we say so
+            return []
+
+        monkeypatch.setattr(
+            SpotifyClient,
+            "get_library_albums_cached",
+            fake_get_albums
+        )
         app = LibraryApp()
 
         async with app.run_test():
             assert app.query_one("#albums_loading", LoadingIndicator).display == True
+            gate.set()
 
     @pytest.mark.asyncio
     async def test_shows_album_list_when_loaded(self, monkeypatch):
         albums = [generate_test_album_search_item("test1"), generate_test_album_search_item("test2")]
         monkeypatch.setattr(
-            "spotify_cli.app.widgets.library.get_library_albums_cached",
-            lambda sp: albums,
+            SpotifyClient,
+            "get_library_albums_cached",
+            lambda _: albums,
         )
         app = LibraryApp()
 
         async with app.run_test():
-            sleep(1)
             assert app.query_one("#albums_loading", LoadingIndicator).display == False
 
             data_table = app.query_one(DataTable)
@@ -56,13 +65,13 @@ class TestLibrary:
     @pytest.mark.asyncio
     async def test_show_error_when_fetching_failed(self, monkeypatch):
         monkeypatch.setattr(
-            "spotify_cli.app.widgets.library.get_library_albums_cached",
-            lambda sp: 2/0,
+            SpotifyClient,
+            "get_library_albums_cached",
+            lambda _: 2/0,
         )
         app = LibraryApp()
 
         async with app.run_test():
-            sleep(1)
             assert app.query_one("#albums_loading", LoadingIndicator).display == False
 
             data_table = app.query_one(DataTable)
