@@ -52,19 +52,19 @@ class SearchScreen(Screen):
 
     # region ##### Events ####
     @on(Input.Submitted, "#search")
-    def handle_artist_submit(self, event: Input.Submitted) -> TracksSearchItems | None:
+    async def handle_artist_submit(self, event: Input.Submitted) -> TracksSearchItems | None:
         track = None
         self.input.clear()
 
         try:
             if self.mode == "artist":
-                track = self.app.service.search_artist_and_play(
+                track = await self.app.service.search_artist_and_play(
                     artist_query=event.value
                 )
             elif self.mode == "track":
-                track = self.app.service.search_track_and_play(song_query=event.value)
+                track = await self.app.service.search_track_and_play(song_query=event.value)
             elif self.mode == "album":
-                track = self.app.service.search_album_and_play(album_query=event.value)
+                track = await self.app.service.search_album_and_play(album_query=event.value)
         except Exception as e:
             self.print_error_text_to_gutter([str(e)])
 
@@ -83,9 +83,9 @@ class SearchScreen(Screen):
         self.input.placeholder = placeholders[self.mode]
 
         self.input.suggester = {
-            "artist": SearchSuggester(self.sp, delay=0.3, search_element_type=SearchElementTypes.ARTIST),
-            "track": SearchSuggester(self.sp, delay=0.3, search_element_type=SearchElementTypes.TRACK),
-            "album": SearchSuggester(self.sp, delay=0.3, search_element_type=SearchElementTypes.ALBUM),
+            "artist": SearchSuggester(self.app.service, delay=0.3, search_element_type=SearchElementTypes.ARTIST),
+            "track": SearchSuggester(self.app.service, delay=0.3, search_element_type=SearchElementTypes.TRACK),
+            "album": SearchSuggester(self.app.service, delay=0.3, search_element_type=SearchElementTypes.ALBUM),
         }[self.mode]
 
         picker = self.query_one("#mode_picker", RadioSet)

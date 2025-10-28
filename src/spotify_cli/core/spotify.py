@@ -123,7 +123,7 @@ class SpotifyClient:
         search_res = self.sp.search(q=f"{search_element.value}:{query}", type=search_element.value, limit=limit)
         return SearchResult(**search_res[next(iter(search_res))])
 
-    def search_artist_and_play(self, artist_query) -> TracksSearchItems:
+    async def search_artist_and_play(self, artist_query) -> TracksSearchItems:
         HARD_LIMIT = 50
         search_result = self.search_spotify_tracks(query=f"{artist_query}",
                                                    search_element=SearchElementTypes.ARTIST,
@@ -133,10 +133,10 @@ class SpotifyClient:
         for i in search_result.items:
             uris.append(i.uri)
 
-        self.play_by_uris_or_context_uri(uris=uris)
+        await self.play_by_uris_or_context_uri(uris=uris)
         return search_result.get_item_by_index()
 
-    def search_track_and_play(self, song_query) -> TracksSearchItems:
+    async def search_track_and_play(self, song_query) -> TracksSearchItems:
         search_res = self.search_spotify_tracks(query=song_query, search_element=SearchElementTypes.TRACK, limit=1)
 
         if len(search_res.items) == 0:
@@ -144,17 +144,17 @@ class SpotifyClient:
 
         uris = [track.uri for track in search_res.items]
 
-        self.play_by_uris_or_context_uri(uris=uris)
+        await self.play_by_uris_or_context_uri(uris=uris)
         return search_res.get_item_by_index()
 
-    def search_album_and_play(self, album_query) -> TracksSearchItems:
+    async def search_album_and_play(self, album_query) -> TracksSearchItems:
         album_res = self.search_spotify_tracks(query=album_query, search_element=SearchElementTypes.ALBUM, limit=1)
         albums: list[AlbumSearchItem] = album_res.items
 
         if len(albums) == 0:
             raise NoAlbumsFound()
 
-        self.play_by_uris_or_context_uri(context_uri=albums[0].uri)
+        await self.play_by_uris_or_context_uri(context_uri=albums[0].uri)
         returned_track = self._get_first_track_from_album_search_item(album=albums[0])
         return returned_track
 

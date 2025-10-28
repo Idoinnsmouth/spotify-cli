@@ -98,7 +98,6 @@ class Main(Screen):
             ScreenChange(
                 SearchScreen,
                 {
-                    "sp": self.app.service,
                     "print_error_text_to_gutter": self.print_error_text_to_gutter
                 },
                 self._after_search
@@ -133,7 +132,7 @@ class Main(Screen):
         self.post_message(
             ScreenChange(
                 ChooseDevice,
-                {"sp": self.app.service, "active_device": self.active_device},
+                {"active_device": self.active_device},
                 self.check_choose_device
             )
         )
