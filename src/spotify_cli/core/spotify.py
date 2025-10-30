@@ -12,7 +12,7 @@ from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.playback import PlaybackState
 from spotify_cli.schemas.search import SearchResult, AlbumSearchItem, TracksSearchItems
 from spotify_cli.schemas.track import Track, Actions
-from spotify_cli.core.caching import get_saved_albums_cache_path, SavedAlbumsCache, EntryModel
+from spotify_cli.core.caching import get_saved_albums_cache_path, SavedAlbumsCache, EntryModel, SavedAlbumsModel
 from spotify_cli.utils.date_time_helpers import parse_date
 
 
@@ -260,10 +260,7 @@ class SpotifyClient:
             # Cache is fresh by TTL—return as is.
             return [entry.album for entry in model.entries]
 
-        # Freshness peek: get the newest 'added_at' from API
-        peek = self.sp.current_user_saved_albums(limit=1, offset=0)
-        peek_items = peek.get("items", [])
-        newest_added_at = peek_items[0]["added_at"] if peek_items else None
+        newest_added_at = self._get_newest_added_album_in_library()
 
         if newest_added_at and newest_added_at == model.latest_added_at:
             # No change since last seen—refresh TTL and return
@@ -271,8 +268,25 @@ class SpotifyClient:
             cache.save(model)
             return [entry.album for entry in model.entries]
 
-        # There are changes or first load: delta-fetch
-        known_ids = set(model.album_ids)
+        new_entries = self._get_new_library_entries(known_ids=model.album_ids)
+
+        if new_entries:
+            model.entries = [entry for entry in new_entries] + model.entries
+            model.album_ids = list(set(model.album_ids).union(a.album.id for a in new_entries))
+            model.latest_added_at = newest_added_at or model.latest_added_at
+
+        model.updated_ts = now
+        model.entries.sort(key=lambda e: e.added_at, reverse=True)
+
+        cache.save(model)
+        return [entry.album for entry in model.entries]
+
+    def _get_new_library_entries(self, known_ids: list[str]) -> list[EntryModel]:
+        """
+        go overs the user library in batches and add new saved albums to the model until hitting an id of
+        existing model in the library
+        """
+        known_ids = set(known_ids)
         new_entries: list[EntryModel] = []
 
         offset = 0
@@ -317,16 +331,13 @@ class SpotifyClient:
 
             offset += BATCH
 
-        if new_entries:
-            model.entries = [entry for entry in new_entries] + model.entries
-            model.album_ids = list(set(model.album_ids).union(a.album.id for a in new_entries))
-            model.latest_added_at = newest_added_at or model.latest_added_at
+        return new_entries
 
-        model.updated_ts = now
-        model.entries.sort(key=lambda e: e.added_at, reverse=True)
-
-        cache.save(model)
-        return [entry.album for entry in model.entries]
+    def _get_newest_added_album_in_library(self):
+        # Freshness peek: get the newest 'added_at' from API
+        peek = self.sp.current_user_saved_albums(limit=1, offset=0)
+        peek_items = peek.get("items", [])
+        return peek_items[0]["added_at"] if peek_items else None
 
     @staticmethod
     def _is_album_not_released_yet(added_date: str, release_date: Optional[str]) -> bool:
