@@ -17,23 +17,11 @@ It allows you to browse, search, and control Spotify playback directly from your
 
 ## Tech Stack
 
-- Python 3.11+  
+- Python 3.12+  
 - [Textual](https://github.com/Textualize/textual) – for the TUI interface  
 - [Spotipy](https://github.com/plamere/spotipy) – Spotify Web API wrapper  
 - AsyncIO, Rich, Requests  
 
----
-
-## Setup
-
-- Create a Spotify Developer App at https://developer.spotify.com/dashboard
-- Copy your Client ID, Client Secret, and Redirect URI.  
-- Add them to a .env file in the project root:
-```
-SPOTIPY_CLIENT_ID=your_client_id
-SPOTIPY_CLIENT_SECRET=your_client_secret
-SPOTIPY_REDIRECT_URI=http://localhost:8080
-```
 ---
 
 ## Installation
@@ -48,7 +36,7 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ---
