@@ -91,7 +91,7 @@ class SpotifyClient:
         devices = self.get_devices()
 
         if len(devices) > 0:
-            return next((_device for _device in devices if _device.is_active), devices[0])
+            return next((_device for _device in devices if _device.is_active), None)
         else:
             return None
 
@@ -123,7 +123,7 @@ class SpotifyClient:
         search_res = self.sp.search(q=f"{search_element.value}:{query}", type=search_element.value, limit=limit)
         return SearchResult(**search_res[next(iter(search_res))])
 
-    async def search_artist_and_play(self, artist_query) -> TracksSearchItems:
+    async def search_artist_and_play(self, artist_query: str) -> TracksSearchItems:
         HARD_LIMIT = 50
         search_result = self.search_spotify_tracks(query=f"{artist_query}",
                                                    search_element=SearchElementTypes.ARTIST,
@@ -162,6 +162,9 @@ class SpotifyClient:
 
     # region ##### Playback #####
     async def play_by_uris_or_context_uri(self, uris: list[str] = None, context_uri: str = None):
+        if not uris and not context_uri:
+            raise ValueError("play_by_uris_or_context_uri must be called with either uris or context_uri")
+
         self.platform.ensure_spotify_running()
         device = await self.wait_for_device()
         if device is None:
@@ -174,7 +177,6 @@ class SpotifyClient:
         _album_track = album_tracks.get("items")[0]
         return TracksSearchItems(
             **_album_track,
-            is_playable=True,
             album=album,
         )
 
@@ -190,14 +192,11 @@ class SpotifyClient:
 
         if self._can_start_playback(currently_playing):
             if currently_playing.device_id != active_device.id:
-                self.sp.transfer_playback(active_device.id)
+                self.sp.transfer_playback(device_id=active_device.id)
             else:
                 self.sp.start_playback(device_id=active_device.id)
         elif self._can_pause_playback(currently_playing):
-            if currently_playing.device_id != active_device.id:
-                self.sp.transfer_playback(active_device.id)
-            else:
-                self.sp.pause_playback(device_id=active_device.id)
+            self.sp.pause_playback(device_id=currently_playing.device_id)
 
     @staticmethod
     def _can_start_playback(currently_playing: PlaybackState | None) -> bool:

@@ -2,8 +2,9 @@ import uuid
 
 from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.images import SpotifyImage
+from spotify_cli.schemas.playback import PlaybackState
 from spotify_cli.schemas.search import AlbumSearchItem, ArtistSearchItem
-from spotify_cli.schemas.track import Track
+from spotify_cli.schemas.track import Track, Actions, Disallows
 
 
 def generate_test_track_instance() -> Track:
@@ -67,6 +68,24 @@ def generate_test_device(name: str = "device", is_active: bool = False) -> Devic
     return device
 
 
+def generate_test_playback_state(is_playing: bool = True, device_id: str = None, is_pausable: bool = True,
+                                 is_resumable: bool = True) -> PlaybackState:
+    return PlaybackState(
+        track=generate_test_track_instance(),
+        progress_ms=0,
+        duration_ms=200,
+        is_playing=is_playing,
+        device_id=device_id,
+        actions=Actions(
+            disallows=Disallows(
+                pausing=(not is_pausable),
+                resuming=(not is_resumable)
+            )
+        ),
+        etag=None
+    )
+
+
 class MockSpotify:
     def __init__(
             self,
@@ -83,4 +102,9 @@ class MockSpotify:
             backoff_factor=0.3,
             language=None,
     ):
+        pass
+
+
+class MockPlatformAdapter:
+    def __init__(self):
         pass
