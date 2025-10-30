@@ -53,6 +53,9 @@ class SearchScreen(Screen):
     # region ##### Events ####
     @on(Input.Submitted, "#search")
     async def handle_artist_submit(self, event: Input.Submitted) -> TracksSearchItems | None:
+        if not event.value:
+            return
+
         track = None
         self.input.clear()
 
@@ -68,6 +71,7 @@ class SearchScreen(Screen):
         except Exception as e:
             self.print_error_text_to_gutter([str(e)])
 
+        # todo instead of callback, publish a "play" message and handle in main
         self.dismiss(track)
 
     # endregion
@@ -95,8 +99,8 @@ class SearchScreen(Screen):
     # endregion
 
     # region #### Actions ####
-
-    def on_radio_set_changed(self, event: RadioSet.Changed):
+    @on(RadioSet.Changed, "#mode_picker")
+    def handle_radio_select_change(self, event: RadioSet.Changed):
         self.mode = event.pressed.id
 
     def action_set_mode(self, mode: str):
@@ -143,7 +147,7 @@ class SearchSuggester(Suggester):
         # run blocking Spotipy call off the event loop
         try:
             res: SearchResult | None = await asyncio.wait_for(
-                asyncio.to_thread(self._search_spotify_cached, v, self.search_element_type, self.sp),
+                asyncio.to_thread(self._search_spotify_cached, v, self.search_element_type),
                 timeout=2.5,
             )
         except Exception as e:
@@ -160,9 +164,8 @@ class SearchSuggester(Suggester):
         top_result = max(res.items, key=lambda i: getattr(i, 'popularity', 0))
         return top_result.name
 
-    @staticmethod
     @lru_cache(maxsize=256)
-    def _search_spotify_cached(v: str, element_type: SearchElementTypes, sp: SpotifyClient) -> SearchResult | None:
+    def _search_spotify_cached(self, v: str, element_type: SearchElementTypes) -> SearchResult | None:
         # in results album have no popularity so there is no way to get the top result as in spotify app
         search_limit = 1 if element_type is SearchElementTypes.ALBUM else 10
-        return sp.search_spotify_suggestions(query=v, search_element=element_type, limit=search_limit)
+        return self.sp.search_spotify_suggestions(query=v, search_element=element_type, limit=search_limit)

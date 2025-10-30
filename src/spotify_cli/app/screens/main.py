@@ -3,7 +3,7 @@ import datetime
 from typing import Optional, Any, Callable
 
 from pydantic import ValidationError
-from spotipy import Spotify, SpotifyException
+from spotipy import SpotifyException
 from textual import work
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical
