@@ -1,34 +1,27 @@
 import asyncio
 import datetime
-from typing import Optional, Any, Callable
+from typing import Optional
 
 from pydantic import ValidationError
 from spotipy import SpotifyException
 from textual import work
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical
-from textual.message import Message
 from textual.reactive import reactive
 from textual.screen import Screen
 from textual.widgets import Footer, Pretty
 
+from spotify_cli.app.messages import ScreenChange
 from spotify_cli.app.screens.choose_device import ChooseDevice
 from spotify_cli.app.widgets.active_device import ActiveDevice
 from spotify_cli.app.widgets.library import Library
 from spotify_cli.app.screens.search import SearchScreen
 from spotify_cli.app.widgets.track_details import TrackDetail
+from spotify_cli.app.widgets.track_progress_bar import TrackProgressBar
 from spotify_cli.schemas.device import Device
 from spotify_cli.schemas.playback import PlaybackState
 from spotify_cli.schemas.search import TracksSearchItems
 from spotify_cli.schemas.track import Track
-
-
-class ScreenChange(Message):
-    def __init__(self, screen: type[Screen], params: dict[str, Any], callback: Optional[Callable]):
-        self.screen = screen
-        self.params = params
-        self.callback = callback
-        super().__init__()
 
 
 class Main(Screen):
@@ -46,7 +39,8 @@ class Main(Screen):
     MAX_POLL_IDLE_OR_PAUSED_TIME = 3600
 
     active_device: reactive[Device | None] = reactive(default=None)
-    cur_track: Track | None
+    cur_track: reactive[Track | None] = reactive(None)
+    playback_state: reactive[PlaybackState | None] = reactive(None)
     _debug_mode = False
     _debug_message = reactive([])
     _cancelable_sleep = None
@@ -63,6 +57,7 @@ class Main(Screen):
         self.active_device = self.app.service.get_first_active_device()
         playback_state = self.app.service.get_playback_state()
         self.cur_track = playback_state.track if playback_state else playback_state
+        self.playback_state = playback_state
 
     def on_mount(self) -> None:
         self.run_worker(self._poll_loop, thread=True, exclusive=True, group="pollers")
@@ -150,6 +145,9 @@ class Main(Screen):
         track_details = self.query_one(TrackDetail)
         track_details.track = track
 
+    def update_playback_state(self, state: PlaybackState | None):
+        self.query_one(TrackProgressBar).playback_state = state
+
     def change_active_device(self, device: Device):
         if not device:
             return
@@ -178,6 +176,7 @@ class Main(Screen):
                 if state != self._last:
                     self._last = state
                     self.update_track(state.track)
+                    self.update_playback_state(state)
 
                 # adaptive sleep based on current state
                 if state.is_playing and state.progress_ms and state.duration_ms:

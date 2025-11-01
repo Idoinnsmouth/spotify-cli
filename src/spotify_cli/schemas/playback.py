@@ -33,5 +33,6 @@ class PlaybackState(BaseModel):
             progress_ms=payload.get("progress_ms"),
             duration_ms=item.get("duration_ms"),
             is_playing=payload.get("is_playing", False),
-            device_id=payload.get("device").get("id")
+            device_id=payload.get("device").get("id"),
+            actions=Actions(**payload.get("actions")),
         )

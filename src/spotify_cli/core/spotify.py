@@ -235,15 +235,7 @@ class SpotifyClient:
             actions=Actions(**playback_data.get("actions"))
         )
 
-        return PlaybackState(
-            track=track,
-            progress_ms=playback_data.get("progress_ms"),
-            duration_ms=playback_data.get("duration_ms"),
-            is_playing=playback_data.get("is_playing"),
-            device_id=playback_data.get("device", {}).get("id"),
-            actions=Actions(**playback_data.get("actions")),
-            etag=playback_data.get("etag")
-        )
+        return PlaybackState.to_state(playback_data)
 
     # endregion
 

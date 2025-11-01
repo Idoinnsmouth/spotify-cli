@@ -3,6 +3,7 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Static
 
+from spotify_cli.app.widgets.track_progress_bar import TrackProgressBar
 from spotify_cli.schemas.track import Track
 from spotify_cli.utils.pixelate_images import get_image_from_url
 
@@ -28,21 +29,29 @@ class TrackDetail(Widget):
                 Static(f"Artist: {self.track.artist}"),
                 id="track_text_details"
             ),
+            # Container(
+            #     self.pixel_view,
+            #     id="album_cover"
+            # ),
             Container(
-                self.pixel_view,
-                id="album_cover"
+                TrackProgressBar(),
+                id="track_progress_bar"
             ),
             id="track_layout"
         )
 
     async def on_mount(self):
-        if self.track:
-            self._start_service_call(self.track)
+        pass
+        # todo - I don't fetch image of track for now
+        # if self.track:
+        #     self._start_service_call(self.track)
 
     def watch_track(self, old: "Track | None", new: "Track | None"):
-        if new is None or (old and old.name == new.name):
-            return
-        self._start_service_call(new)
+        pass
+        # todo - I don't fetch image of track for now
+        # if new is None or (old and old.name == new.name):
+        #     return
+        # self._start_service_call(new)
 
     def _start_service_call(self, track: "Track"):
         """Start/replace a background job for the current track."""
